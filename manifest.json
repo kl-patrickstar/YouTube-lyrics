@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Lyrics",
+  "version": "0.3.0",
+  "description": "Zeigt Songtexte zu YouTube-Videos in einem Panel an.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "*://*.youtube.com/*",
+    "https://lrclib.net/*",
+    "https://api.lyrics.ovh/*",
+    "https://itunes.apple.com/*"
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png",
+    "256": "icons/icon256.png",
+    "512": "icons/icon512.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.youtube.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
