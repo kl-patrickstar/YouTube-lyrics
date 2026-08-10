@@ -681,42 +681,38 @@
   /* ---------- Footer & Externe Links ---------- */
 
   .footer {
-    display: grid;
-    justify-items: center;
-    gap: 8px;
-    padding-top: 10px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    margin-top: 8px;
+    padding-top: 8px;
     border-top: 1px solid var(--border-subtle);
     font-size: 10.5px;
     color: var(--text-muted);
     user-select: none;
   }
 
-  .footer-section {
-    display: grid;
-    justify-items: center;
-    gap: 6px;
-  }
-
-  .footer-title {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-muted);
+  .footer-credit {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .footer-links {
     display: flex;
     gap: 6px;
+    margin-left: auto;
   }
 
   .ext-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 34px;
-    height: 26px;
-    border-radius: 8px;
+    width: 38px;
+    height: 28px;
+    border-radius: var(--radius-sm);
     background: var(--bg-surface);
     border: 1px solid var(--border-subtle);
     color: var(--text-secondary);
@@ -997,14 +993,11 @@
         </div>
 
         <footer class="footer">
-          <div id="ext-section" class="footer-section" hidden>
-            <div class="footer-title">Externe Links</div>
-            <div class="footer-links">
-              <a id="ug-link" class="ext-btn" href="#" target="_blank" rel="noopener noreferrer" hidden title="Tab auf Ultimate Guitar öffnen" aria-label="Tab auf Ultimate Guitar öffnen"><span class="ug-logo">UG</span></a>
-              <a id="am-link" class="ext-btn" href="#" target="_blank" rel="noopener noreferrer" hidden title="Auf Apple Music öffnen" aria-label="Auf Apple Music öffnen">${ICONS.apple}</a>
-            </div>
+          <span class="footer-credit">Lyrics: LRCLIB · lyrics.ovh</span>
+          <div id="ext-section" class="footer-links" role="group" aria-label="Externe Links" hidden>
+            <a id="ug-link" class="ext-btn" href="#" target="_blank" rel="noopener noreferrer" hidden title="Tab auf Ultimate Guitar öffnen" aria-label="Tab auf Ultimate Guitar öffnen"><span class="ug-logo">UG</span></a>
+            <a id="am-link" class="ext-btn" href="#" target="_blank" rel="noopener noreferrer" hidden title="Auf Apple Music öffnen" aria-label="Auf Apple Music öffnen">${ICONS.apple}</a>
           </div>
-          <span>Lyrics: LRCLIB · lyrics.ovh</span>
         </footer>
       </section>
     `;
