@@ -119,7 +119,16 @@
     transition:
       transform var(--transition-fast),
       background var(--transition-fast),
-      border-color var(--transition-fast);
+      border-color var(--transition-fast),
+      opacity var(--transition-normal),
+      visibility var(--transition-normal);
+  }
+
+  #toggle.is-hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: scale(0.9);
   }
 
   #toggle:hover {
@@ -135,7 +144,7 @@
 
   #panel {
     position: absolute;
-    top: 54px;
+    top: 0;
     right: 0;
     width: min(420px, calc(100vw - 24px));
     max-height: min(78vh, 760px);
@@ -151,6 +160,19 @@
     padding: 14px 14px 10px;
     color: var(--text-primary);
     box-shadow: var(--shadow-panel);
+
+    transition:
+      opacity var(--transition-normal),
+      transform var(--transition-normal),
+      visibility var(--transition-normal);
+  }
+
+  #panel[hidden] {
+    display: flex !important;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(14px);
+    pointer-events: none;
   }
 
   /* ---------- Header ---------- */
@@ -1046,7 +1068,7 @@
     });
 
     ui.close.addEventListener("click", () => {
-      ui.panel.hidden = true;
+      setPanelVisibility(false);
       const currentId = getVideoId();
       if (currentId) {
         try {
@@ -1143,11 +1165,18 @@
     return ui;
   }
 
+  function setPanelVisibility(open) {
+    if (!ui) return;
+    ui.panel.hidden = !open;
+    ui.toggle.classList.toggle("is-hidden", open);
+  }
+
   function togglePanel() {
     if (!ui) return;
-    ui.panel.hidden = !ui.panel.hidden;
+    const open = ui.panel.hidden;
+    setPanelVisibility(open);
 
-    if (!ui.panel.hidden) {
+    if (open) {
       refresh({ force: false });
     }
   }
@@ -2203,7 +2232,7 @@
           ui.panel.hidden &&
           !sessionStorage.getItem(`ytlyrics_closed_${videoId}`)
         ) {
-          ui.panel.hidden = false;
+          setPanelVisibility(true);
         }
       }
 
