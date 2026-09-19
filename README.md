@@ -1,4 +1,3 @@
-cat > ~/youtube-lyrics-extension/README.md << 'ENDOFREADME'
 # 🎵 YouTube Lyrics – Browser Extension
 
 Eine schlanke Browser-Extension, die synchronisierte Songtexte zu YouTube-Videos anzeigt – im Stil moderner Music-Apps wie Apple Music oder Spotify.
