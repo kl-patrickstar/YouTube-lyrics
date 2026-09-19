@@ -1,10 +1,11 @@
 {
   "manifest_version": 3,
   "name": "YouTube Lyrics",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "description": "Zeigt Songtexte zu YouTube-Videos in einem Panel an.",
   "permissions": [
-    "storage"
+    "storage",
+    "activeTab"
   ],
   "host_permissions": [
     "*://*.youtube.com/*",
@@ -20,6 +21,19 @@
     "256": "icons/icon256.png",
     "512": "icons/icon512.png"
   },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "YouTube Lyrics"
+  },
+  "commands": {
+    "toggle-panel": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+L",
+        "mac": "Command+Shift+L"
+      },
+      "description": "YouTube-Lyrics-Panel ein-/ausblenden"
+    }
+  },
   "background": {
     "service_worker": "background.js"
   },
@@ -29,6 +43,14 @@
         "*://*.youtube.com/*"
       ],
       "js": [
+        "state.js",
+        "bridge.js",
+        "lyrics.js",
+        "api.js",
+        "youtube.js",
+        "sync.js",
+        "template.js",
+        "ui.js",
         "content.js"
       ],
       "run_at": "document_idle"

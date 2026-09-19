@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<style>
+  body {
+    width: 280px;
+    margin: 0;
+    font: 13px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+    background: #14161b;
+    color: #f2f3f7;
+  }
+  .wrap { padding: 12px 14px; }
+  h1 {
+    font-size: 11px;
+    margin: 0 0 8px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #8f96a3;
+  }
+  .title { font-weight: 600; margin: 0 0 2px; }
+  .meta { color: #8f96a3; margin: 0 0 8px; }
+  .status {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 8px 10px;
+    border-radius: 10px;
+    color: #c6cad3;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>YouTube Lyrics</h1>
+    <p class="title" id="title">–</p>
+    <p class="meta" id="meta"></p>
+    <div class="status" id="status">…</div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
