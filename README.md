@@ -3,8 +3,8 @@ cat > ~/youtube-lyrics-extension/README.md << 'ENDOFREADME'
 
 Eine schlanke Browser-Extension, die synchronisierte Songtexte zu YouTube-Videos anzeigt – im Stil moderner Music-Apps wie Apple Music oder Spotify.
 
-**Status:** v1.0.0 · Aktiv in Entwicklung
-**Browser:** Safari (macOS) · Chrome (macOS/Windows/Linux)
+**Status:** Aktiv in Entwicklung · v1.0.0 
+**Browser:** Safari (macOS)  und Chrome (macOS/Windows/Linux)
 **Standard:** WebExtension (Manifest V3)
 
 ---
@@ -12,7 +12,7 @@ Eine schlanke Browser-Extension, die synchronisierte Songtexte zu YouTube-Videos
 ## ✨ Features
 
 ### 🎤 Karaoke-Modus
-- Automatische Zeilen-Hervorhebung synchron zum Video (Frame-genau via `requestVideoFrameCallback`)
+- Automatische Zeilen-Hervorhebung synchron zum Video 
 - Sanftes Auto-Scrolling (ein-/ausschaltbar)
 - Klick auf eine Zeile springt zur entsprechenden Song-Position
 
