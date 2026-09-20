@@ -100,13 +100,27 @@
      // --------------------------------------------------------
      //  1. Topic-Kanal
      // --------------------------------------------------------
-     if (/\s*-\s*Topic$/i.test(author)) {
-       return {
-         artist: cleanArtist(author),
-         title: cleanTrack(originalTitle),
-         source: "topic",
-       };
-     }
+       if (/\s*-\s*Topic$/i.test(author)) {
+         const artist = cleanArtist(author);
+         let title = cleanTrack(originalTitle);
+
+         // Normalize whitespace (YouTube uses non-breaking spaces)
+         title = title.replace(/[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g, " ");
+         title = title.replace(/\s{2,}/g, " ").trim();
+
+         // Strip "Artist - " prefix if present (all dash variants)
+         const escaped = artist.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+         const dashChars = "\\-\\u2010\\u2011\\u2012\\u2013\\u2014\\u2015\\u2212\\uFE58\\uFE63\\uFF0D|:·•";
+         const prefixRegex = new RegExp("^\\s*" + escaped + "\\s*[" + dashChars + "]\\s*", "i");
+         const stripped = title.replace(prefixRegex, "").trim();
+         if (stripped) title = stripped;
+
+         return {
+           artist,
+           title,
+           source: "topic",
+         };
+       }
 
      // --------------------------------------------------------
      //  2. Video-Titel mit Trenner

@@ -183,20 +183,31 @@
     // ============================================================
     //  MERGE METADATA
     // ============================================================
-    function mergeLyricsMetadata(song, lyrics) {
-      if (!lyrics.artist && !lyrics.title) return;
+     function mergeLyricsMetadata(song, lyrics) {
+       if (!lyrics.artist && !lyrics.title) return;
 
-      Y.state.currentSong = {
-        ...song,
-        artist: lyrics.artist || song.artist,
-        title: lyrics.title || song.title,
-      };
+       // Prefer our parsed metadata (usually cleaner than LRCLIB's raw values)
+       const finalArtist =
+         song.artist && song.artist !== "Unknown"
+           ? song.artist
+           : (lyrics.artist || song.artist);
 
-      if (Y.state.ui) {
-        Y.state.ui.title.textContent = Y.state.currentSong.title;
-        Y.state.ui.meta.textContent = Y.state.currentSong.artist;
-      }
-    }
+       const finalTitle =
+         song.title && song.title !== "Unknown"
+           ? song.title
+           : (lyrics.title || song.title);
+
+       Y.state.currentSong = {
+         ...song,
+         artist: finalArtist,
+         title: finalTitle,
+       };
+
+       if (Y.state.ui) {
+         Y.state.ui.title.textContent = Y.state.currentSong.title;
+         Y.state.ui.meta.textContent = Y.state.currentSong.artist;
+       }
+     }
 
     function updateExternalLinksAndArt(sequence) {
       Y.ui.updateUgLink();
