@@ -1,295 +1,148 @@
-# 🎵 YouTube Lyrics – Browser Extension
+# 🎵 YouTube Lyrics
 
-Eine schlanke Browser-Extension, die synchronisierte Songtexte zu YouTube-Videos anzeigt – im Stil moderner Music-Apps wie Apple Music oder Spotify.
+Synced lyrics for YouTube — in a floating, resizable panel. Like Apple Music, but for any video.
 
-**Status:** Aktiv in Entwicklung · v1.0.0 
-**Browser:** Safari (macOS)  und Chrome (macOS/Windows/Linux)
-**Standard:** WebExtension (Manifest V3)
+![Browsers](https://img.shields.io/badge/browsers-Safari%20%7C%20Chrome-blue)
+![Manifest](https://img.shields.io/badge/manifest-v3-green)
+![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
 ---
 
 ## ✨ Features
 
-### 🎤 Karaoke-Modus
-- Automatische Zeilen-Hervorhebung synchron zum Video 
-- Sanftes Auto-Scrolling (ein-/ausschaltbar)
-- Klick auf eine Zeile springt zur entsprechenden Song-Position
-
-### 📖 Text-Modus
-- Ruhige Lese-Ansicht ohne Hervorhebung
-- Ideal zum Mitsingen oder Nachlesen
-
-### ⏱️ Intelligentes Timing
-- Auto-Offset-Erkennung via YouTube-Kapitel (Intro/Song/Outro)
-- Dauer-basierte Heuristik für Videos ohne Kapitel
-- Manuelle Feinjustierung (±0,5s / ±5s)
-- LRC-Offset-Tag (`[offset: +500]`) wird unterstützt
-
-### 🎨 Premium-UI
-- Modernes Dark-Theme mit Glassmorphism
-- Automatische Light/Dark-Erkennung basierend auf YouTube
-- Frei verschiebbares Panel und Button
-- Smooth Animations
-
-### 🖼️ Album-Cover
-- Automatische Cover-Suche via iTunes Search API
-- Angezeigt im Header neben Songtitel & Künstler
-
-### 🔗 Externe Links & Aktionen
-- Ultimate Guitar – Tabs & Chords
-- Apple Music – Song öffnen
-- Drucken – Sauber formatierte Druckvorschau in neuem Tab
-- Kopieren – Songtext in die Zwischenablage
-
-### 💾 Caching
-- Lyrics, Cover & Einstellungen werden lokal gespeichert
-- Sofortiger Start bei wiederholtem Anhören
-
-### ⚙️ Einstellungen
-- Auto-Open bei Musikvideos (Topic-Kanäle)
-- Theme: Dunkel / Hell / Auto
-- Schriftgröße (14–26 px)
-- Karaoke- oder Text-Modus
-
-### ⌨️ Keyboard Shortcut
-- `⌘ + Shift + L` (macOS) / `Ctrl + Shift + L` (Windows/Linux) – Panel öffnen/schließen
+- 🎤 **Karaoke mode** — Active line auto-highlights, frame-perfect sync
+- 📖 **Text mode** — Clean reading view without highlighting
+- ✨ **Popover UI** — Panel grows out of the button, shrinks back when closed
+- 🎨 **Smart pill** — Click for ±0.5s, hold for ±5s repeated adjustment
+- 🔵 **Streaming links** — Spotify, Apple Music, Ultimate Guitar tabs
+- 📋 **Copy & print** — Clipboard with title + artist header, print preview
+- ⚙️ **Settings overlay** — Auto-scroll toggle, theme, font size, reset
+- ⌨️ **Shortcut** — `⌘⇧L` (macOS) / `Ctrl+Shift+L` (Win/Linux)
 
 ---
 
-## 🌐 Browser-Unterstützung
+## 🌐 Browser Support
 
-| Browser | Status | Installation |
-|---------|--------|--------------|
-| Safari (macOS) | ✅ Vollständig unterstützt | Über Xcode konvertieren |
-| Chrome (macOS/Windows/Linux) | ✅ Vollständig unterstützt | Direkt als Entpackte Erweiterung laden |
-| Edge (Chromium-basiert) | ✅ Sollte funktionieren | Wie Chrome |
-| Firefox | ⚠️ Nicht getestet | Andere Manifest-Version nötig (V2) |
-| iOS Safari | ⚠️ In Vorbereitung | Über Xcode bauen |
-
----
-
-## 🛠️ Installation
-
-### 🟢 Chrome (Entwicklermodus)
-
-Die einfachste und schnellste Methode. Kein Xcode, keine Konvertierung.
-
-**1. Repository klonen:**
-
-    git clone https://github.com/kl-patrickstar/YouTube-lyrics.git
-    cd YouTube-lyrics
-
-**2. Chrome öffnen:**
-
-- Adressleiste: `chrome://extensions`
-- Oben rechts: Entwicklermodus aktivieren
-
-**3. Extension laden:**
-
-- Klick auf "Entpackte Erweiterung laden"
-- Wähle den geklonten Ordner YouTube-lyrics
-
-**4. Fertig:**
-
-- Die Extension erscheint in der Liste
-- Toolbar-Icon anpinnen (Puzzle-Symbol → Pin)
-- YouTube öffnen und testen 🎉
-
-Tipp: Chrome lädt Änderungen automatisch neu, wenn du auf das 🔄-Symbol in der Extension-Liste klickst. Du musst Chrome nicht neu starten.
+| Browser | Status | Install |
+|---------|--------|---------|
+| Safari (macOS) | ✅ Full | Xcode build |
+| Chrome | ✅ Full | Load unpacked |
+| Edge | ✅ Works | Like Chrome |
+| Firefox | ⚠️ Not tested | Manifest V2 required |
 
 ---
 
-### 🔵 Safari (macOS)
+## 🚀 Installation
 
-Safari erlaubt es nicht, einen Ordner direkt zu laden. Wir konvertieren die Extension mit Xcode.
+### Chrome
 
-**Voraussetzungen:**
-- macOS 12 oder neuer
-- Xcode (kostenlos im App Store)
-- Apple Developer Account
-- (Für unsignierte Extensions): Entwicklermodus in Safari aktivieren
+```bash
+git clone https://github.com/kl-patrickstar/YouTube-lyrics.git
+```
 
-**1. Repository klonen:**
+1. Open `chrome://extensions`
+2. Enable **Developer mode** (top right)
+3. Click **Load unpacked** and select the cloned folder
+4. Pin the toolbar icon, then open any YouTube video
 
-    git clone https://github.com/kl-patrickstar/YouTube-lyrics.git
-    cd YouTube-lyrics
+### Safari
 
-**2. Xcode-Projekt generieren:**
+Build via Xcode:
 
-    xcrun safari-web-extension-converter . \
-      --project-location ~/YouTubeLyrics \
-      --app-name "YouTube Lyrics" \
-      --extension-name "YouTubeLyricsExtension" \
-      --macos-only
+1. Open the Xcode project: `YouTube Lyrics.xcodeproj`
+2. Press `⌘R` to build & run the host app
+3. Close the host window
+4. Safari → **Settings → Extensions** → enable **YouTube Lyrics**
+5. Open YouTube and press `⌘⇧L`
 
-**3. Projekt in Xcode öffnen:**
-
-    open ~/YouTubeLyrics/YouTube\ Lyrics.xcodeproj
-
-**4. App bauen & starten:**
-
-- ⌘ + R drücken
-- Die Host-App startet
-- Host-Fenster wieder schließen
-
-**5. Extension in Safari aktivieren:**
-
-- Safari → Einstellungen → Erweiterungen
-- "YouTube Lyrics" aktivieren
-- Berechtigungen bestätigen
-
-**6. Testen:**
-
-- YouTube öffnen
-- Ein Musikvideo abspielen
-- ⌘ + Shift + L drücken oder auf das 🎵-Icon klicken
-
-Wichtig: Bei jedem Code-Update muss die Extension in Safari deaktiviert und neu aktiviert werden, weil Safari Web-Extensions aggressiv cached.
+> **Tip:** Safari caches extensions aggressively. After code changes: disable → restart Safari → re-enable.
 
 ---
 
-## 📂 Projektstruktur
+## 📂 Project Structure
 
-Die Extension folgt dem WebExtension-Standard (Manifest V3) und läuft unverändert in Safari und Chrome.
-
-    YouTube-lyrics/
-    ├── manifest.json         # Extension-Konfiguration (Manifest V3)
-    ├── background.js         # Service Worker: Storage, CORS-Proxy, Commands
-    │
-    ├── content.js            # Orchestrierung: Refresh, Song-Info, Lyrics-Abruf
-    ├── state.js              # Globaler State (Settings, UI-Referenzen, Cache)
-    ├── bridge.js             # Kommunikation zum Service Worker (Storage, Fetch)
-    ├── api.js                # Lyrics-APIs (LRCLIB, lyrics.ovh, iTunes)
-    ├── lyrics.js             # LRC-Parser, Song-Info-Parsing, Titel-Varianten
-    ├── youtube.js            # YouTube-DOM-Helfer (Video-ID, Metadaten, Kapitel)
-    ├── sync.js               # Sync-Engine (requestVideoFrameCallback, Offset)
-    ├── template.js           # Shadow-DOM Template + Styles
-    ├── ui.js                 # UI-Logik (Panel, Settings, Drag, Copy/Print)
-    │
-    ├── popup.html            # Extension-Popup (Toolbar-Icon)
-    ├── popup.js              # Popup-Logik (Status-Anzeige)
-    │
-    ├── icon.svg              # Vektor-Icon
-    ├── icons/                # Icon-Set (16–512 px)
-    └── README.md
+```text
+YouTube-lyrics/
+├── manifest.json        # Manifest V3
+├── background.js        # Service worker (storage, fetch proxy, commands)
+├── content.js           # Orchestrator (refresh, resolve, render)
+├── state.js             # Global state
+├── bridge.js            # Storage + fetch messaging
+├── api.js               # LRCLIB, lyrics.ovh, iTunes
+├── lyrics.js            # LRC parser, song info heuristics
+├── youtube.js           # DOM helpers (video ID, metadata, chapters)
+├── sync.js              # Sync engine (requestVideoFrameCallback)
+├── template.js          # Shadow DOM template + CSS
+├── ui.js                # UI logic (panel, settings, drag, popover)
+├── popup.html           # Toolbar popup markup
+├── popup.js             # Toolbar popup logic
+├── icon.svg             # Vector icon
+├── icons/               # Icon set (16–512 px)
+└── README.md
+```
 
 ---
 
-## 🔀 Browser-Kompatibilität im Code
+## 🔧 How It Works
 
-Die Extension nutzt bereits Cross-Browser-kompatible APIs:
-
-    const browserAPI = globalThis.browser || globalThis.chrome;
-
-- Safari stellt `browser.*` bereit (Standard der WebExtensions)
-- Chrome stellt `chrome.*` bereit (unterstützt aber auch `browser.*` ab Manifest V3)
-- Der Fallback sorgt dafür, dass beide funktionieren
-
-**Voraussetzungen für Cross-Browser-Support:**
-- ✅ Manifest V3 (siehe manifest.json)
-- ✅ Kein chrome.*-spezifischer Code, der nicht auch in Safari läuft
-- ✅ Keine Safari-only APIs wie SafariWebExtensionHandler (wird nur im Xcode-Build verwendet und ist optional)
+1. **Detect video** — video ID + metadata via oEmbed + DOM
+2. **Parse song** — Artist/title via heuristics (Topic channels, separators, `ft.`)
+3. **Fetch lyrics** — LRCLIB first, lyrics.ovh as fallback
+4. **Sync** — `requestVideoFrameCallback` for 30–60 fps timing accuracy
+5. **Render** — Isolated Shadow DOM with karaoke highlighting + auto-scroll
 
 ---
 
-## 📋 Verwendete APIs
+## 📡 APIs Used
 
-Diese Extension nutzt ausschließlich öffentliche, kostenlose APIs ohne API-Key:
+All free, no API keys required:
 
-| API | Zweck |
-|-----|-------|
-| LRCLIB (https://lrclib.net) | Synchronisierte Songtexte (LRC-Format) |
-| lyrics.ovh (https://lyrics.ovh) | Fallback für Plain-Text-Lyrics |
-| iTunes Search API | Album-Cover |
-
----
-
-## 🎯 Wie es funktioniert
-
-**1. Video-Erkennung**
-content.js erkennt die aktuelle YouTube-Video-ID und holt Metadaten (Titel, Kanal) über oEmbed + DOM.
-
-**2. Song-Info-Parsing**
-lyrics.js extrahiert Künstler und Titel mit mehreren Heuristiken:
-- Topic-Kanäle
-- Artist - Song-Trenner
-- ft./feat.-Erkennung
-- Fan-Kanal-Erkennung
-- Fallback auf Kanalname
-
-**3. Lyrics-Abruf**
-api.js fragt zuerst LRCLIB (mehrere Titel-Varianten parallel via Promise.any), dann lyrics.ovh als Fallback.
-
-**4. Synchronisation**
-sync.js nutzt requestVideoFrameCallback (30–60 Updates/Sekunde) für frame-genaues Timing. LRC-[offset:...]-Tags werden berücksichtigt.
-
-**5. Darstellung**
-ui.js rendert den Songtext in einem Shadow DOM (isoliert vom YouTube-Layout) mit Karaoke-Hervorhebung, Auto-Scroll und Offset-Korrektur.
+| API | Purpose |
+|-----|---------|
+| [LRCLIB](https://lrclib.net) | Synced lyrics (LRC format) |
+| [lyrics.ovh](https://lyrics.ovh) | Plain-text fallback |
+| [iTunes Search](https://itunes.apple.com) | Album artwork |
 
 ---
 
-## 🔒 Datenschutz
+## 🔒 Privacy
 
-- Alle Daten (Cache, Einstellungen, Offset) werden lokal im Browser gespeichert
-- Keine Server-Kommunikation außer zu den oben genannten APIs
-- Keine Tracking-Analytics
-- Keine Drittanbieter-Skripte
-
----
-
-## 🐛 Bekannte Einschränkungen
-
-- Funktioniert nur auf YouTube-Videos mit erkennbaren Song-Metadaten
-- Bei manchen Videos muss das Timing manuell korrigiert werden
-- Cover-Bilder sind nicht für alle Songs verfügbar
-- iOS-Safari noch nicht getestet
-- Firefox wird nicht offiziell unterstützt
+- All data stored locally via `chrome.storage.local`
+- No tracking, no analytics, no third-party scripts
+- Only talks to the three public APIs listed above
 
 ---
 
-## 🚀 Roadmap
+## 🗺️ Roadmap
 
-- [ ] iOS-Safari testen
-- [ ] Firefox-Support (Manifest V2 → V3 Konverter)
-- [ ] Export-Funktionen (.lrc, .srt, .md)
-- [ ] "Andere Version suchen"-Button für bessere LRC-Dateien
-- [ ] Web-Share-API (native Share-Sheet)
-- [ ] Kompakt-Modus (nur aktive Zeile)
-- [ ] Fokus-/Kinomodus
-- [ ] Übersetzungsfunktion (EN → DE)
-
----
-
-## 🤝 Mitwirken
-
-Beiträge, Issues und Pull Requests sind willkommen!
-Wenn du einen Bug findest oder ein Feature vorschlagen willst, öffne bitte ein Issue auf GitHub.
+- [ ] Screenshots for README
+- [ ] iOS Safari testing
+- [ ] Firefox support (Manifest V2)
+- [ ] Export as `.lrc` / `.srt` / `.md`
+- [ ] Web Share API
+- [ ] Compact mode (active line only)
+- [ ] Translation toggle (EN ↔ DE)
 
 ---
 
-## 📄 Lizenz
+## 🤝 Contributing
 
-MIT License – frei nutzbar, auch kommerziell.
+Issues and pull requests are welcome. Open an issue on GitHub for bugs or feature ideas.
 
-Hinweis zu Songtexten:
-Die Lyrics werden von Drittanbieter-APIs bereitgestellt. Die kommerzielle Nutzung von Songtexten erfordert entsprechende Lizenzen (z. B. Musixmatch, LyricFind). Die Extension selbst ist Open Source und kann frei verwendet werden.
+---
+
+## 📄 License
+
+MIT — free to use, including commercially.
+
+> **Note on lyrics:** Lyrics are provided by third-party APIs. Commercial use of lyrics requires proper licensing (e.g. Musixmatch, LyricFind). The extension itself is open source.
 
 ---
 
 ## 🙏 Credits
 
-- Inspiration: Apple Music, Spotify Lyrics
-- Icons: Custom SVG
-- Design: Modern Dark UI mit Glassmorphism
-- Lyrics-APIs: LRCLIB, lyrics.ovh
-- Cover-Bilder: iTunes Search API
+- Inspired by Apple Music & Spotify Lyrics
+- Icons: custom SVG
+- Lyrics: LRCLIB, lyrics.ovh · Artwork: iTunes Search API
 
 Made with ❤️ for music lovers
-
----
-
-## 📬 Kontakt
-
-- GitHub: @kl-patrickstar
-- Repository: https://github.com/kl-patrickstar/YouTube-lyrics
-ENDOFREADME
