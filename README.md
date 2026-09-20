@@ -6,7 +6,7 @@ Synced lyrics for YouTube — in a floating, resizable panel. Like Apple Music, 
 ![Manifest](https://img.shields.io/badge/manifest-v3-green)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
-[Support this project](#-support) · [🐛 Report an issue](https://github.com/kl-patrickstar/YouTube-lyrics/issues)
+[🍺 Support this project](#-support) · [🐛 Report an issue](https://github.com/kl-patrickstar/YouTube-lyrics/issues)
 
 ---
 
@@ -178,9 +178,9 @@ Issues and pull requests are welcome. Open an issue on GitHub for bugs or featur
 
 ---
 
-## 💖 Support
+## 🍺 Support
 
-YouTube Lyrics is built and maintained in my free time. If it made your karaoke nights better or you just want to say thanks, feel free to show some love:
+This extension is built and maintained in my free time. If it made your karaoke nights better or you just want to say thanks, feel free to show some love:
 
 [![PayPal](https://img.shields.io/badge/PayPal-Buy%20me%20a%20coffee-00457C?logo=paypal&logoColor=white)](https://www.paypal.me/SKleinhenzLeiva)
 
