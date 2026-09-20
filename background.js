@@ -1,5 +1,5 @@
 // ============================================================
-//  GLOBALE KONSTANTEN (nur EINMAL deklariert!)
+//  GLOBAL CONSTANTS (declared ONCE!)
 // ============================================================
 const browserAPI = globalThis.browser || globalThis.chrome;
 const runtime = browserAPI?.runtime;
@@ -10,16 +10,16 @@ const commands = browserAPI?.commands;
 const FETCH_TIMEOUT_MS = 12000;
 
 // ============================================================
-//  INSTALL-HOOK
+//  INSTALL HOOK
 // ============================================================
 if (runtime?.onInstalled) {
   runtime.onInstalled.addListener((details) => {
-    console.log("YouTube Lyrics installiert/aktualisiert:", details?.reason);
+    console.log("YouTube Lyrics installed/updated:", details?.reason);
   });
 }
 
 // ============================================================
-//  MESSAGE-HANDLER
+//  MESSAGE HANDLER
 // ============================================================
 runtime?.onMessage.addListener((message, sender, sendResponse) => {
   if (!message) return false;
@@ -55,7 +55,7 @@ runtime?.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   // --------------------------------------------------------
-  //  JSON-FETCH-PROXY
+  //  JSON FETCH PROXY
   // --------------------------------------------------------
   if (message.type === "fetch-json" && message.url) {
     const controller = new AbortController();
@@ -88,7 +88,7 @@ runtime?.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({
           ok: false,
           status: 0,
-          error: isAbort ? "Request-Timeout" : String(error),
+          error: isAbort ? "Request timeout" : String(error),
         });
       });
 
@@ -113,10 +113,10 @@ if (commands?.onCommand) {
       try {
         await tabs.sendMessage(tab.id, { type: "toggle-panel" });
       } catch (err) {
-        console.warn("toggle-panel: sendMessage fehlgeschlagen:", err);
+        console.warn("toggle-panel: sendMessage failed:", err);
       }
     } catch (error) {
-      console.warn("Command toggle-panel fehlgeschlagen:", error);
+      console.warn("Command toggle-panel failed:", error);
     }
   });
 }

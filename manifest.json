@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "YouTube Lyrics",
   "version": "1.0.0",
-  "description": "Zeigt Songtexte zu YouTube-Videos in einem Panel an.",
+  "description": "Shows synced lyrics for YouTube videos in a floating panel.",
   "permissions": [
     "storage",
     "activeTab"
@@ -31,7 +31,7 @@
         "default": "Ctrl+Shift+L",
         "mac": "Command+Shift+L"
       },
-      "description": "YouTube-Lyrics-Panel ein-/ausblenden"
+      "description": "Show or hide the YouTube Lyrics panel"
     }
   },
   "background": {
