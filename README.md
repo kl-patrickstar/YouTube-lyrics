@@ -1,6 +1,6 @@
-# 🎵 YouTube Lyrics
+# 🎵 YouTube Lyrics Extension
 
-Synced lyrics for YouTube — in a floating, resizable panel. Like Apple Music, but for any video.
+Sing along or play along. Synced karaoke lyrics for YouTube — plus one-click guitar tabs on Ultimate Guitar. No more searching, no more switching tabs. Just the video, the lyrics, and the tabs in one floating panel.
 
 ![Browsers](https://img.shields.io/badge/browsers-Safari%20%7C%20Chrome-blue)
 ![Manifest](https://img.shields.io/badge/manifest-v3-green)
