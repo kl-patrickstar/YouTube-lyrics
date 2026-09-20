@@ -12,6 +12,11 @@
     let panelDragState = null;
     let savedButtonPos = null;
 
+    // ---------- Panel Drag rAF Batching ----------
+    let dragRafId = null;
+    let pendingDx = 0;
+    let pendingDy = 0;
+
     // ---------- Animation-State ----------
     let panelAnimating = false;
     const POPOVER_DURATION = 260;
@@ -70,10 +75,10 @@
         fontValue: root.getElementById("font-value"),
         headerModeKaraoke: root.getElementById("header-mode-karaoke"),
         headerModeText: root.getElementById("header-mode-text"),
-          offsetRow: root.getElementById("offset-row"),
-          groupTiming: root.getElementById("group-timing"),
-          sep0: root.getElementById("sep-0"),
-          timingPill: root.getElementById("timing-pill"),
+        offsetRow: root.getElementById("offset-row"),
+        groupTiming: root.getElementById("group-timing"),
+        sep0: root.getElementById("sep-0"),
+        timingPill: root.getElementById("timing-pill"),
         offsetMinus: root.getElementById("offset-minus"),
         offsetPlus: root.getElementById("offset-plus"),
         offsetValue: root.getElementById("offset-value"),
@@ -184,25 +189,55 @@
             ui.panel.classList.add("dragging");
           }
 
-          if (panelDragState.moved) {
-            applyPanelPosition(
-              clampPanelPosition(
-                panelDragState.originX + dx,
-                panelDragState.originY + dy
-              )
-            );
-          }
+          if (!panelDragState.moved) return;
+
+          // Batch transform updates to one per frame (fixes Chrome sticky drag)
+          pendingDx = dx;
+          pendingDy = dy;
+
+          if (dragRafId) return;
+
+          dragRafId = requestAnimationFrame(() => {
+            dragRafId = null;
+            ui.panel.style.transform = `translate(${pendingDx}px, ${pendingDy}px)`;
+          });
         });
 
         ui.header.addEventListener("pointerup", (event) => {
           if (!panelDragState || event.pointerId !== panelDragState.pointerId) return;
+
+          // Cancel any pending rAF and clear
+          if (dragRafId) {
+            cancelAnimationFrame(dragRafId);
+            dragRafId = null;
+          }
+
+          const moved = panelDragState.moved;
+          const startX = panelDragState.originX;
+          const startY = panelDragState.originY;
+          const dx = event.clientX - panelDragState.startX;
+          const dy = event.clientY - panelDragState.startY;
+
           panelDragState = null;
           ui.panel.classList.remove("dragging");
+
+          if (moved) {
+            // Commit: clear transform, apply final position once
+            ui.panel.style.transform = "";
+            applyPanelPosition(
+              clampPanelPosition(startX + dx, startY + dy)
+            );
+          }
         });
 
         ui.header.addEventListener("pointercancel", () => {
+          if (dragRafId) {
+            cancelAnimationFrame(dragRafId);
+            dragRafId = null;
+          }
           panelDragState = null;
           ui.panel.classList.remove("dragging");
+          ui.panel.style.transform = "";
         });
       }
 
@@ -218,6 +253,7 @@
 
       ui.reload.addEventListener("click", () => Y.controller.refresh({ force: true }));
 
+      // ---------- Editor open/close ----------
       ui.edit.addEventListener("click", () => {
         const willOpen = ui.editor.hidden;
         ui.editor.hidden = !willOpen;
@@ -233,6 +269,7 @@
         });
       }
 
+      // ---------- Settings open/close ----------
       ui.settingsBtn.addEventListener("click", () => {
         const willOpen = ui.settings.hidden;
         ui.settings.hidden = !willOpen;
@@ -250,6 +287,7 @@
 
       ui.search.addEventListener("click", () => Y.controller.manualSearch());
 
+      // ---------- Settings: Auto-scroll toggle ----------
       if (ui.settingAutoScroll) {
         ui.settingAutoScroll.addEventListener("click", async () => {
           const newVal = ui.settingAutoScroll.getAttribute("aria-checked") !== "true";
@@ -268,6 +306,7 @@
       ui.fontMinus.addEventListener("click", () => changeFontSize(-1));
       ui.fontPlus.addEventListener("click", () => changeFontSize(1));
 
+      // ---------- Reset ----------
       if (ui.settingsReset) {
         ui.settingsReset.addEventListener("click", async () => {
           resetAllSettings();
@@ -277,14 +316,17 @@
       ui.headerModeKaraoke.addEventListener("click", () => setMode("karaoke"));
       ui.headerModeText.addEventListener("click", () => setMode("text"));
 
+      // ---------- Offset Pill ----------
       attachOffsetHold(ui.offsetMinus, -1);
       attachOffsetHold(ui.offsetPlus, 1);
       ui.offsetValue.addEventListener("click", () => Y.sync.resetOffset());
 
+      // ---------- Copy Button ----------
       if (ui.copyBtn) {
         ui.copyBtn.addEventListener("click", () => copyLyricsToClipboard());
       }
 
+      // ---------- Print Button ----------
       if (ui.printBtn) {
         ui.printBtn.addEventListener("click", () => exportLyricsAsHTML());
       }
@@ -315,7 +357,7 @@
     }
 
     // ============================================================
-    //  Offset Pill
+    //  Offset Pill: Tap = ±0.5s · Hold = ±5s (repeat)
     // ============================================================
     function attachOffsetHold(button, direction) {
       const HOLD_DELAY = 400;
@@ -512,8 +554,6 @@
 
     // ============================================================
     //  CLOSE PANEL TO BUTTON (popover out)
-    //  Panel shrinks toward its top-right corner.
-    //  Button restores to its previous position (no drift).
     // ============================================================
     function closePanelToButton() {
       const ui = Y.state.ui;
@@ -617,12 +657,39 @@
     async function loadButtonPosition() {
       const stored = await Y.bridge.getFromCache("ytlyrics_buttonpos");
 
-      const pos =
-        stored && Number.isFinite(stored.x) && Number.isFinite(stored.y)
-          ? clampPosition(stored.x, stored.y)
-          : clampPosition(window.innerWidth - 16, 84);
+      if (stored && Number.isFinite(stored.x) && Number.isFinite(stored.y)) {
+        applyButtonPosition(clampPosition(stored.x, stored.y));
+        return;
+      }
 
-      applyButtonPosition(pos);
+      // First-time: position the button just right of the video
+      const smartPos = computeInitialButtonPosition();
+      applyButtonPosition(clampPosition(smartPos.x, smartPos.y));
+    }
+
+    function computeInitialButtonPosition() {
+      const vw = window.innerWidth;
+      const buttonSize = 44;
+      const margin = 16;
+
+      const video = document.querySelector("video");
+
+      if (video) {
+        const rect = video.getBoundingClientRect();
+
+        let x = rect.right + margin;
+        let y = rect.top + 24;
+
+        if (x + buttonSize > vw - 16) {
+          x = vw - buttonSize - 24;
+        }
+
+        if (y < 84) y = 84;
+
+        return { x, y };
+      }
+
+      return { x: vw - buttonSize - 120, y: 120 };
     }
 
     function saveButtonPosition() {
@@ -877,15 +944,15 @@
     function renderEmptyState(message) {
       if (!Y.state.ui) return;
 
-        if (Y.state.ui.offsetRow) {
-          Y.state.ui.offsetRow.hidden = true;
-        }
-        if (Y.state.ui.groupTiming) {
-          Y.state.ui.groupTiming.hidden = false;
-        }
-        if (Y.state.ui.sep0) {
-          Y.state.ui.sep0.hidden = false;
-        }
+      if (Y.state.ui.offsetRow) {
+        Y.state.ui.offsetRow.hidden = true;
+      }
+      if (Y.state.ui.groupTiming) {
+        Y.state.ui.groupTiming.hidden = false;
+      }
+      if (Y.state.ui.sep0) {
+        Y.state.ui.sep0.hidden = false;
+      }
 
       Y.state.ui.lyrics.textContent = "";
       Y.state.ui.lyrics.scrollTop = 0;
@@ -960,18 +1027,18 @@
 
           Y.state.ui.lyrics.appendChild(container);
 
-            if (Y.state.ui.offsetRow) {
-              Y.state.ui.offsetRow.hidden = false;
-            }
-            if (Y.state.ui.groupTiming) {
-              Y.state.ui.groupTiming.hidden = false;
-            }
-            if (Y.state.ui.sep0) {
-              Y.state.ui.sep0.hidden = false;
-            }
+          if (Y.state.ui.offsetRow) {
+            Y.state.ui.offsetRow.hidden = false;
+          }
+          if (Y.state.ui.groupTiming) {
+            Y.state.ui.groupTiming.hidden = false;
+          }
+          if (Y.state.ui.sep0) {
+            Y.state.ui.sep0.hidden = false;
+          }
 
-            requestAnimationFrame(() => {
-              Y.sync.attachVideoListeners();
+          requestAnimationFrame(() => {
+            Y.sync.attachVideoListeners();
             Y.sync.updateActiveLine();
           });
 
@@ -997,23 +1064,23 @@
         return;
       }
 
-        const pre = document.createElement("pre");
-        pre.textContent = text;
-        Y.state.ui.lyrics.appendChild(pre);
+      const pre = document.createElement("pre");
+      pre.textContent = text;
+      Y.state.ui.lyrics.appendChild(pre);
 
-        // In text mode: show the control bar but hide the timing pill
-        if (Y.state.ui.offsetRow) {
-          Y.state.ui.offsetRow.hidden = false;
-        }
-        if (Y.state.ui.groupTiming) {
-          Y.state.ui.groupTiming.hidden = true;
-        }
-        if (Y.state.ui.sep0) {
-          Y.state.ui.sep0.hidden = true;
-        }
-
-        updateExtSection();
+      // In text mode: show the control bar but hide the timing pill
+      if (Y.state.ui.offsetRow) {
+        Y.state.ui.offsetRow.hidden = false;
       }
+      if (Y.state.ui.groupTiming) {
+        Y.state.ui.groupTiming.hidden = true;
+      }
+      if (Y.state.ui.sep0) {
+        Y.state.ui.sep0.hidden = true;
+      }
+
+      updateExtSection();
+    }
 
     // ============================================================
     //  Print / Export

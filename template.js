@@ -74,8 +74,8 @@
       border-radius: 14px;
       border: 1px solid var(--border-strong);
       background: var(--bg-primary);
-      -webkit-backdrop-filter: blur(16px) saturate(150%);
-      backdrop-filter: blur(16px) saturate(150%);
+      -webkit-backdrop-filter: blur(12px) saturate(140%);
+      backdrop-filter: blur(12px) saturate(140%);
       color: var(--text-primary);
       cursor: grab;
       touch-action: none;
@@ -108,17 +108,18 @@
       right: 0;
       width: min(420px, calc(100vw - 24px));
       max-height: min(78vh, 760px);
+      contain: layout;
       display: flex;
       flex-direction: column;
       background: var(--bg-primary);
-      -webkit-backdrop-filter: blur(24px) saturate(150%);
-      backdrop-filter: blur(24px) saturate(150%);
+      -webkit-backdrop-filter: blur(16px) saturate(140%);
+      backdrop-filter: blur(16px) saturate(140%);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-lg);
       padding: 14px 14px 10px;
       color: var(--text-primary);
       box-shadow: var(--shadow-panel);
-      will-change: top, left, transform, opacity;
+      will-change: transform, opacity;
       transform-origin: 0 0;
     }
 
@@ -129,12 +130,31 @@
       pointer-events: none;
     }
 
-    /* Popover: opening state — panel appears at button position, small */
+    /* ============================================================
+       DRAGGING STATE — Chrome speedups (no content hiding)
+       ============================================================ */
+
+    /* During drag: disable backdrop-filter (huge Chrome speedup) */
+    #panel.dragging {
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+      background: rgba(15, 18, 23, 0.96);
+      will-change: transform;
+      transition: none;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    #panel.theme-light.dragging {
+      background: rgba(252, 252, 254, 0.98);
+    }
+
+    /* ============================================================
+       POPOVER ANIMATIONS
+       ============================================================ */
     #panel.popover-opening {
       animation: ytly-popover-in var(--popover-duration) var(--popover-easing) forwards;
     }
 
-    /* Popover: closing state — panel shrinks back */
     #panel.popover-closing {
       animation: ytly-popover-out var(--popover-duration) var(--popover-easing) forwards;
     }
@@ -316,7 +336,7 @@
     a.icon-btn { text-decoration: none; }
 
     /* ============================================================
-       DRAWER (Editor + Settings) — as overlay
+       DRAWER (Editor + Settings) — overlay
        ============================================================ */
     .drawer {
       position: absolute;
@@ -662,7 +682,6 @@
       font-weight: 700;
       background-color: var(--accent-soft);
       border-left-color: var(--accent);
-      will-change: opacity, color, background-color;
     }
 
     .controls-bar {
