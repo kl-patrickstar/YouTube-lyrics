@@ -6,6 +6,8 @@ Synced lyrics for YouTube — in a floating, resizable panel. Like Apple Music, 
 ![Manifest](https://img.shields.io/badge/manifest-v3-green)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
+[Support this project](#-support) · [🐛 Report an issue](https://github.com/kl-patrickstar/YouTube-lyrics/issues)
+
 ---
 
 ## ✨ Features
@@ -170,21 +172,19 @@ All free, no API keys required:
 
 ---
 
-## 🗺️ Roadmap
-
-- [ ] Screenshots for README
-- [ ] iOS Safari testing
-- [ ] Firefox support (Manifest V2)
-- [ ] Export as `.lrc` / `.srt` / `.md`
-- [ ] Web Share API
-- [ ] Compact mode (active line only)
-- [ ] Translation toggle (EN ↔ DE)
-
----
-
 ## 🤝 Contributing
 
 Issues and pull requests are welcome. Open an issue on GitHub for bugs or feature ideas.
+
+---
+
+## 💖 Support
+
+YouTube Lyrics is built and maintained in my free time. If it made your karaoke nights better or you just want to say thanks, feel free to show some love:
+
+[![PayPal](https://img.shields.io/badge/PayPal-Buy%20me%20a%20coffee-00457C?logo=paypal&logoColor=white)](https://www.paypal.me/SKleinhenzLeiva)
+
+Thank you, I would appreciate it!
 
 ---
 
@@ -193,13 +193,3 @@ Issues and pull requests are welcome. Open an issue on GitHub for bugs or featur
 MIT — free to use, including commercially.
 
 > **Note on lyrics:** Lyrics are provided by third-party APIs. Commercial use of lyrics requires proper licensing (e.g. Musixmatch, LyricFind). The extension itself is open source.
-
----
-
-## 🙏 Credits
-
-- Inspired by Apple Music & Spotify Lyrics
-- Icons: custom SVG
-- Lyrics: LRCLIB, lyrics.ovh · Artwork: iTunes Search API
-
-Made with ❤️ for music lovers
