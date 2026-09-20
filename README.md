@@ -45,8 +45,6 @@ git clone https://github.com/kl-patrickstar/YouTube-lyrics.git
 3. Click **Load unpacked** and select the cloned folder
 4. Pin the toolbar icon, then open any YouTube video
 
-### Safari
-
 ### Safari (macOS)
 
 Safari erlaubt es nicht, einen Ordner direkt als Erweiterung zu laden. Du musst daraus ein **Xcode-Projekt** machen und in Xcode bauen.
