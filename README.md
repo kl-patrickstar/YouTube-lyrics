@@ -47,24 +47,24 @@ git clone https://github.com/kl-patrickstar/YouTube-lyrics.git
 
 ### Safari (macOS)
 
-Safari erlaubt es nicht, einen Ordner direkt als Erweiterung zu laden. Du musst daraus ein **Xcode-Projekt** machen und in Xcode bauen.
+Safari doesn't allow loading a folder directly. You have to generate an **Xcode project** and build it yourself.
 
-#### Voraussetzungen
+#### Prerequisites
 
-- macOS 12 oder neuer
-- **Xcode** (kostenlos im Mac App Store)
-- Ein Apple Account (kostenlos reicht für den Entwicklermodus)
+- macOS 12 or newer
+- **Xcode** (free on the Mac App Store)
+- An Apple Account (a free one is enough for local development)
 
-#### 1. Repository klonen
+#### 1. Clone the repository
 
 ```bash
 git clone https://github.com/kl-patrickstar/YouTube-lyrics.git
 cd YouTube-lyrics
 ```
 
-#### 2. Xcode-Projekt generieren
+#### 2. Generate the Xcode project
 
-Apple bietet einen eingebauten Konverter, der aus jedem WebExtension-Ordner ein fertiges Xcode-Projekt macht:
+Apple ships a converter that turns any WebExtension folder into a ready-to-build Xcode project:
 
 ```bash
 xcrun safari-web-extension-converter . \
@@ -75,51 +75,44 @@ xcrun safari-web-extension-converter . \
   --no-open
 ```
 
-**Was passiert hier?**
+Replace `com.yourname.youtubelyrics` with your own unique identifier.
 
-- `safari-web-extension-converter .` — konvertiert den aktuellen Ordner
-- `--project-location ~/Desktop/YouTubeLyrics` — wo das Xcode-Projekt landen soll
-- `--app-name "YouTube Lyrics"` — Anzeigename
-- `--bundle-identifier` — eindeutige ID (deinname durch deinen Namen ersetzen)
-- `--macos-only` — nur macOS, kein iOS
-- `--no-open` — Xcode nicht automatisch öffnen
-
-#### 3. Projekt in Xcode öffnen
+#### 3. Open the project
 
 ```bash
 open ~/Desktop/YouTubeLyrics/YouTube\ Lyrics.xcodeproj
 ```
 
-Oder: im Finder zum Ordner navigieren und die `.xcodeproj`-Datei doppelklicken.
+Or double-click the `.xcodeproj` file in Finder.
 
-#### 4. Bauen und starten
+#### 4. Build and run
 
 In Xcode:
 
-1. Oben in der Toolbar: **Schema auf „YouTube Lyrics (macOS)"** stellen (falls nicht schon ausgewählt)
-2. **`⌘R`** drücken (Build + Run)
-3. Ein kleines **Host-Fenster** erscheint → wieder schließen
-4. Falls ein Signing-Fehler kommt: In **Xcode → Signing & Capabilities** dein eigenes Apple-Team auswählen
+1. Set the scheme in the top toolbar to **YouTube Lyrics (macOS)**
+2. Press `⌘R` to build and run
+3. A small **host window** appears — close it again
+4. If Xcode complains about signing: go to **Signing & Capabilities** and select your Apple team
 
-#### 5. Extension in Safari aktivieren
+#### 5. Enable in Safari
 
-1. Safari öffnen → **Einstellungen** (`⌘,`)
-2. Tab **Erweiterungen** aufrufen
-3. **YouTube Lyrics** in der Liste finden → Häkchen setzen
-4. Safari fragt nach Berechtigungen → bestätigen
-5. Optional: In **Safari → Einstellungen → Websites → YouTube Lyrics** die Website-Berechtigung auf **„Erlauben"** setzen
+1. Safari → **Settings** (`⌘,`)
+2. Open the **Extensions** tab
+3. Find **YouTube Lyrics** → enable the checkbox
+4. Accept the permission prompt
+5. Optional: **Safari → Settings → Websites → YouTube Lyrics** → set to **Allow**
 
-#### 6. Testen
+#### 6. Test
 
-1. YouTube öffnen → Musikvideo abspielen
-2. `⌘⇧L` drücken oder auf das 🎵-Icon klicken
+1. Open YouTube and play a music video
+2. Press `⌘⇧L` or click the 🎵 icon
 
-> **Wichtig:** Safari cached Web-Extensions extrem aggressiv. Nach Code-Änderungen immer:
-> 1. Extension in Safari **deaktivieren**
-> 2. Safari **komplett beenden** (`⌘Q`)
+> **Tip:** Safari caches Web Extensions aggressively. After code changes:
+> 1. Disable the extension in Safari
+> 2. Quit Safari completely (`⌘Q`)
 > 3. In Xcode: `Product → Clean Build Folder` (`⇧⌘K`)
-> 4. `⌘R` neu bauen
-> 5. Safari neu starten → Extension wieder **aktivieren**
+> 4. Rebuild with `⌘R`
+> 5. Restart Safari → re-enable the extension
 
 ---
 
@@ -150,10 +143,10 @@ YouTube-lyrics/
 ## 🔧 How It Works
 
 1. **Detect video** — video ID + metadata via oEmbed + DOM
-2. **Parse song** — Artist/title via heuristics (Topic channels, separators, `ft.`)
+2. **Parse song** — artist/title via heuristics (Topic channels, separators, `ft.`)
 3. **Fetch lyrics** — LRCLIB first, lyrics.ovh as fallback
 4. **Sync** — `requestVideoFrameCallback` for 30–60 fps timing accuracy
-5. **Render** — Isolated Shadow DOM with karaoke highlighting + auto-scroll
+5. **Render** — isolated Shadow DOM with karaoke highlighting + auto-scroll
 
 ---
 
