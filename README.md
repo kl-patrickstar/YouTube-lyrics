@@ -12,7 +12,6 @@ Sing along or play along. Synced karaoke lyrics for YouTube — plus one-click g
 
 - 🎤 **Karaoke sync** — Frame-perfect line highlighting, tap any line to jump there
 - 🎸 **Guitar tabs in one click** — Opens Ultimate Guitar for the current song, no searching
-- 📜 **Auto-scroll** — Keeps the active line centered (toggleable)
 
 **Plus:**
 
