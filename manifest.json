@@ -3,10 +3,7 @@
   "name": "YouTube Lyrics",
   "version": "1.0.0",
   "description": "Shows synced lyrics for YouTube videos in a floating panel.",
-  "permissions": [
-    "storage",
-    "activeTab"
-  ],
+  "permissions": ["storage", "activeTab"],
   "host_permissions": [
     "*://*.youtube.com/*",
     "https://lrclib.net/*",
@@ -39,9 +36,7 @@
   },
   "content_scripts": [
     {
-      "matches": [
-        "*://*.youtube.com/*"
-      ],
+      "matches": ["*://*.youtube.com/*"],
       "js": [
         "state.js",
         "bridge.js",

@@ -1,10 +1,5 @@
 #!/bin/bash
-# sync.sh — Kopiert Extension-Dateien aus Xcode in den flachen Ordner (für GitHub)
-#
-# Verwendung:
-#   ~/youtube-lyrics-extension/sync.sh                    # kopiert alles
-#   ~/youtube-lyrics-extension/sync.sh --git              # kopiert + git add/commit/push
-#   ~/youtube-lyrics-extension/sync.sh --git "Message"    # mit Commit-Message
+# sync.sh — Kopiert Extension-Dateien aus Xcode in den flachen Ordner (für Chrome + GitHub)
 
 set -e
 
@@ -18,16 +13,11 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 echo ""
-echo -e "${BLUE}🔄 YouTube Lyrics — Sync Xcode → GitHub-Ordner${NC}"
+echo -e "${BLUE}🔄 YouTube Lyrics — Sync Xcode → Flacher Ordner${NC}"
 echo ""
 
-if [ ! -d "$SRC" ]; then
-  echo -e "${RED}❌ Quelle nicht gefunden: $SRC${NC}"
-  exit 1
-fi
-
-if [ ! -d "$DST" ]; then
-  echo -e "${RED}❌ Ziel nicht gefunden: $DST${NC}"
+if [ ! -d "$SRC" ] || [ ! -d "$DST" ]; then
+  echo -e "${RED}❌ Ordner nicht gefunden${NC}"
   exit 1
 fi
 
@@ -35,46 +25,35 @@ COPIED=0
 SKIPPED=0
 
 sync_file() {
-  local rel_path="$1"
-  local src_file="$SRC/$rel_path"
-  local dst_file="$DST/$rel_path"
-
-  if [ ! -f "$src_file" ]; then
-    return
-  fi
-
+  local src_file="$1"
+  local dst_file="$2"
+  if [ ! -f "$src_file" ]; then return; fi
   if [ -f "$dst_file" ] && cmp -s "$src_file" "$dst_file"; then
-    SKIPPED=$((SKIPPED + 1))
-    return
+    SKIPPED=$((SKIPPED + 1)); return
   fi
-
-  mkdir -p "$(dirname "$dst_file")"
   cp "$src_file" "$dst_file"
-  echo -e "   ${GREEN}✅${NC} $rel_path"
+  echo -e "   ${GREEN}✅${NC} $(basename "$dst_file")"
   COPIED=$((COPIED + 1))
 }
 
-# Content-Module (8 Dateien)
+# 8 Content-Module: aus Xcode content/ → flach nach DST
 for f in ui.js template.js sync.js youtube.js api.js lyrics.js bridge.js state.js; do
-  sync_file "content/$f"
+  sync_file "$SRC/content/$f" "$DST/$f"
 done
 
 # Popup
-sync_file "popup.js"
-sync_file "popup.html"
+sync_file "$SRC/popup.js" "$DST/popup.js"
+sync_file "$SRC/popup.html" "$DST/popup.html"
 
 # Icons-Ordner
 if [ -d "$SRC/icons" ]; then
+  mkdir -p "$DST/icons"
   for icon in "$SRC/icons"/*; do
     if [ -f "$icon" ]; then
-      name="icons/$(basename "$icon")"
-      sync_file "$name"
+      sync_file "$icon" "$DST/icons/$(basename "$icon")"
     fi
   done
 fi
-
-# NOTE: content.js, background.js, manifest.json, icon.svg are NOT synced —
-# they live only in the flat folder and are loaded by Xcode via references.
 
 echo ""
 if [ $COPIED -eq 0 ]; then
@@ -87,16 +66,8 @@ fi
 if [ "$1" = "--git" ]; then
   echo ""
   echo -e "${BLUE}📦 Git-Commit + Push${NC}"
-
   cd "$DST"
-
-  if [ ! -d .git ]; then
-    echo -e "${RED}❌ Kein Git-Repo in $DST${NC}"
-    exit 1
-  fi
-
   git add -A
-
   if git diff --cached --quiet; then
     echo -e "${YELLOW}Keine Änderungen zu committen.${NC}"
   else

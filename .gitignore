@@ -1,4 +1,4 @@
 .DS_Store
 *.xcodeproj
 node_modules/
-_backup/
+backup-old/
