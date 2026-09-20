@@ -70,8 +70,10 @@
         fontValue: root.getElementById("font-value"),
         headerModeKaraoke: root.getElementById("header-mode-karaoke"),
         headerModeText: root.getElementById("header-mode-text"),
-        offsetRow: root.getElementById("offset-row"),
-        timingPill: root.getElementById("timing-pill"),
+          offsetRow: root.getElementById("offset-row"),
+          groupTiming: root.getElementById("group-timing"),
+          sep0: root.getElementById("sep-0"),
+          timingPill: root.getElementById("timing-pill"),
         offsetMinus: root.getElementById("offset-minus"),
         offsetPlus: root.getElementById("offset-plus"),
         offsetValue: root.getElementById("offset-value"),
@@ -875,9 +877,15 @@
     function renderEmptyState(message) {
       if (!Y.state.ui) return;
 
-      if (Y.state.ui.offsetRow) {
-        Y.state.ui.offsetRow.hidden = true;
-      }
+        if (Y.state.ui.offsetRow) {
+          Y.state.ui.offsetRow.hidden = true;
+        }
+        if (Y.state.ui.groupTiming) {
+          Y.state.ui.groupTiming.hidden = false;
+        }
+        if (Y.state.ui.sep0) {
+          Y.state.ui.sep0.hidden = false;
+        }
 
       Y.state.ui.lyrics.textContent = "";
       Y.state.ui.lyrics.scrollTop = 0;
@@ -952,12 +960,18 @@
 
           Y.state.ui.lyrics.appendChild(container);
 
-          if (Y.state.ui.offsetRow) {
-            Y.state.ui.offsetRow.hidden = false;
-          }
+            if (Y.state.ui.offsetRow) {
+              Y.state.ui.offsetRow.hidden = false;
+            }
+            if (Y.state.ui.groupTiming) {
+              Y.state.ui.groupTiming.hidden = false;
+            }
+            if (Y.state.ui.sep0) {
+              Y.state.ui.sep0.hidden = false;
+            }
 
-          requestAnimationFrame(() => {
-            Y.sync.attachVideoListeners();
+            requestAnimationFrame(() => {
+              Y.sync.attachVideoListeners();
             Y.sync.updateActiveLine();
           });
 
@@ -983,12 +997,23 @@
         return;
       }
 
-      const pre = document.createElement("pre");
-      pre.textContent = text;
-      Y.state.ui.lyrics.appendChild(pre);
+        const pre = document.createElement("pre");
+        pre.textContent = text;
+        Y.state.ui.lyrics.appendChild(pre);
 
-      updateExtSection();
-    }
+        // In text mode: show the control bar but hide the timing pill
+        if (Y.state.ui.offsetRow) {
+          Y.state.ui.offsetRow.hidden = false;
+        }
+        if (Y.state.ui.groupTiming) {
+          Y.state.ui.groupTiming.hidden = true;
+        }
+        if (Y.state.ui.sep0) {
+          Y.state.ui.sep0.hidden = true;
+        }
+
+        updateExtSection();
+      }
 
     // ============================================================
     //  Print / Export

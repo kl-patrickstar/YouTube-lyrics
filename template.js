@@ -179,8 +179,8 @@
        ============================================================ */
     .panel-header {
       display: flex;
-      align-items: flex-start;
-      gap: 10px;
+      align-items: stretch;
+      gap: 12px;
       padding: 4px 2px 12px;
       margin-bottom: 10px;
       border-bottom: 1px solid var(--border-subtle);
@@ -200,8 +200,8 @@
 
     .header-left {
       display: flex;
-      align-items: flex-start;
-      gap: 10px;
+      align-items: center;
+      gap: 12px;
       flex: 1 1 auto;
       min-width: 0;
     }
@@ -249,9 +249,9 @@
     }
 
     .track-art {
-      width: 40px;
-      height: 40px;
-      border-radius: var(--radius-sm);
+      width: 52px;
+      height: 52px;
+      border-radius: 10px;
       object-fit: cover;
       flex: 0 0 auto;
       background: var(--bg-surface);
@@ -285,7 +285,14 @@
       overflow: hidden;
     }
 
-    .header-text { flex: 1 1 auto; min-width: 0; }
+    .header-text {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 2px;
+    }
 
     .icon-btn {
       width: 30px;
@@ -1141,7 +1148,7 @@
         <div id="lyrics"></div>
 
         <div id="offset-row" class="controls-bar" hidden>
-          <div class="ctrl-group">
+          <div class="ctrl-group" id="group-timing">
             <div class="ctrl-label">Timing</div>
             <div id="timing-pill" class="timing-pill" role="group" aria-label="Adjust timing">
               <button id="offset-minus" class="pill-btn has-tooltip" title="0.5s earlier" aria-label="Earlier">
@@ -1159,7 +1166,7 @@
             </div>
           </div>
 
-          <div class="group-sep" aria-hidden="true"></div>
+          <div class="group-sep" id="sep-0" aria-hidden="true"></div>
 
           <div class="ctrl-group" id="group-listen" hidden>
             <div class="ctrl-label">Listen</div>
