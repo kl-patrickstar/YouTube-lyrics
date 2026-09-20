@@ -2,24 +2,25 @@
 
 Sing along or play along. Synced karaoke lyrics for YouTube — plus one-click guitar tabs on Ultimate Guitar. No more searching, no more switching tabs. Just the video, the lyrics, and the tabs in one floating panel.
 
-![Browsers](https://img.shields.io/badge/browsers-Safari%20%7C%20Chrome-blue)
-![Manifest](https://img.shields.io/badge/manifest-v3-green)
-![License](https://img.shields.io/badge/license-MIT-lightgrey)
-
 [🍺 Support this project](#-support) · [🐛 Report an issue](https://github.com/kl-patrickstar/YouTube-lyrics/issues)
 
 ---
 
 ## ✨ Features
 
-- 🎤 **Karaoke mode** — Active line auto-highlights, frame-perfect sync
-- 📖 **Text mode** — Clean reading view without highlighting
-- ✨ **Popover UI** — Panel grows out of the button, shrinks back when closed
-- 🎨 **Smart pill** — Click for ±0.5s, hold for ±5s repeated adjustment
-- 🔵 **Streaming links** — Spotify, Apple Music, Ultimate Guitar tabs
-- 📋 **Copy & print** — Clipboard with title + artist header, print preview
-- ⚙️ **Settings overlay** — Auto-scroll toggle, theme, font size, reset
-- ⌨️ **Shortcut** — `⌘⇧L` (macOS) / `Ctrl+Shift+L` (Win/Linux)
+**Built for karaoke and guitarists:**
+
+- 🎤 **Karaoke sync** — Frame-perfect line highlighting, tap any line to jump there
+- 🎸 **Guitar tabs in one click** — Opens Ultimate Guitar for the current song, no searching
+- 📜 **Auto-scroll** — Keeps the active line centered (toggleable)
+
+**Plus:**
+
+- Text mode, adjustable timing, album art
+- Copy or print the full song with one click
+- Optional Spotify & Apple Music links
+- Dark/light theme, font size, reset
+- Shortcut: `⌘⇧L` / `Ctrl+Shift+L`
 
 ---
 
@@ -161,6 +162,11 @@ All free, no API keys required:
 | [LRCLIB](https://lrclib.net) | Synced lyrics (LRC format) |
 | [lyrics.ovh](https://lyrics.ovh) | Plain-text fallback |
 | [iTunes Search](https://itunes.apple.com) | Album artwork |
+
+
+![Browsers](https://img.shields.io/badge/browsers-Safari%20%7C%20Chrome-blue)
+![Manifest](https://img.shields.io/badge/manifest-v3-green)
+![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
 ---
 
