@@ -10,7 +10,6 @@
     // ---------- Panel-Position & Drag-State ----------
     let panelPos = null;
     let panelDragState = null;
-    let savedButtonPos = null;
 
     // ---------- Panel Drag rAF Batching ----------
     let dragRafId = null;
@@ -191,7 +190,6 @@
 
           if (!panelDragState.moved) return;
 
-          // Batch transform updates to one per frame (fixes Chrome sticky drag)
           pendingDx = dx;
           pendingDy = dy;
 
@@ -206,7 +204,6 @@
         ui.header.addEventListener("pointerup", (event) => {
           if (!panelDragState || event.pointerId !== panelDragState.pointerId) return;
 
-          // Cancel any pending rAF and clear
           if (dragRafId) {
             cancelAnimationFrame(dragRafId);
             dragRafId = null;
@@ -222,7 +219,6 @@
           ui.panel.classList.remove("dragging");
 
           if (moved) {
-            // Commit: clear transform, apply final position once
             ui.panel.style.transform = "";
             applyPanelPosition(
               clampPanelPosition(startX + dx, startY + dy)
@@ -253,7 +249,6 @@
 
       ui.reload.addEventListener("click", () => Y.controller.refresh({ force: true }));
 
-      // ---------- Editor open/close ----------
       ui.edit.addEventListener("click", () => {
         const willOpen = ui.editor.hidden;
         ui.editor.hidden = !willOpen;
@@ -269,7 +264,6 @@
         });
       }
 
-      // ---------- Settings open/close ----------
       ui.settingsBtn.addEventListener("click", () => {
         const willOpen = ui.settings.hidden;
         ui.settings.hidden = !willOpen;
@@ -287,7 +281,6 @@
 
       ui.search.addEventListener("click", () => Y.controller.manualSearch());
 
-      // ---------- Settings: Auto-scroll toggle ----------
       if (ui.settingAutoScroll) {
         ui.settingAutoScroll.addEventListener("click", async () => {
           const newVal = ui.settingAutoScroll.getAttribute("aria-checked") !== "true";
@@ -306,7 +299,6 @@
       ui.fontMinus.addEventListener("click", () => changeFontSize(-1));
       ui.fontPlus.addEventListener("click", () => changeFontSize(1));
 
-      // ---------- Reset ----------
       if (ui.settingsReset) {
         ui.settingsReset.addEventListener("click", async () => {
           resetAllSettings();
@@ -316,17 +308,14 @@
       ui.headerModeKaraoke.addEventListener("click", () => setMode("karaoke"));
       ui.headerModeText.addEventListener("click", () => setMode("text"));
 
-      // ---------- Offset Pill ----------
       attachOffsetHold(ui.offsetMinus, -1);
       attachOffsetHold(ui.offsetPlus, 1);
       ui.offsetValue.addEventListener("click", () => Y.sync.resetOffset());
 
-      // ---------- Copy Button ----------
       if (ui.copyBtn) {
         ui.copyBtn.addEventListener("click", () => copyLyricsToClipboard());
       }
 
-      // ---------- Print Button ----------
       if (ui.printBtn) {
         ui.printBtn.addEventListener("click", () => exportLyricsAsHTML());
       }
@@ -357,7 +346,7 @@
     }
 
     // ============================================================
-    //  Offset Pill: Tap = ±0.5s · Hold = ±5s (repeat)
+    //  Offset Pill
     // ============================================================
     function attachOffsetHold(button, direction) {
       const HOLD_DELAY = 400;
@@ -494,6 +483,7 @@
 
     // ============================================================
     //  OPEN PANEL FROM BUTTON (popover in)
+    //  Panel opens to the LEFT of button with an 8px gap.
     // ============================================================
     function openPanelFromButton() {
       const ui = Y.state.ui;
@@ -501,10 +491,7 @@
 
       panelAnimating = true;
 
-      // Save current button position so we can restore it on close
-      savedButtonPos = { ...buttonPos };
-
-      // 1. Reveal panel invisibly to measure size
+      // Reveal panel invisibly to measure size
       ui.panel.hidden = false;
       ui.panel.style.visibility = "hidden";
       ui.panel.classList.remove("popover-opening", "popover-closing");
@@ -512,7 +499,7 @@
       const w = ui.panel.offsetWidth;
       const h = ui.panel.offsetHeight;
 
-      // 2. Compute target position: panel to the LEFT of button
+      // Target position: 8px to the LEFT of button
       const margin = 8;
       const vw = window.innerWidth;
       const vh = window.innerHeight;
@@ -525,25 +512,21 @@
       if (top + h > vh - margin) top = vh - h - margin;
       if (top < margin) top = margin;
 
-      // 3. Position panel
       ui.panel.style.left = `${left}px`;
       ui.panel.style.top = `${top}px`;
       ui.panel.style.right = "auto";
       ui.panel.style.bottom = "auto";
 
-      // 4. transform-origin = button's top-left corner, relative to panel
+      // transform-origin = button's top-left corner, relative to panel
       const originX = buttonPos.x - left;
       const originY = buttonPos.y - top;
       ui.panel.style.transformOrigin = `${originX}px ${originY}px`;
 
-      // 5. Hide button
       ui.toggle.classList.add("is-hidden");
 
-      // 6. Play animation
       ui.panel.style.visibility = "";
       ui.panel.classList.add("popover-opening");
 
-      // 7. Store final position in memory
       panelPos = { x: left, y: top };
 
       setTimeout(() => {
@@ -554,6 +537,8 @@
 
     // ============================================================
     //  CLOSE PANEL TO BUTTON (popover out)
+    //  Panel shrinks to its TOP-RIGHT corner + 8px (no visual jump).
+    //  Button lands at that exact point → no drift, no jump.
     // ============================================================
     function closePanelToButton() {
       const ui = Y.state.ui;
@@ -562,16 +547,18 @@
 
       panelAnimating = true;
 
-      // Set transform-origin to the TOP-RIGHT corner of the panel
-      ui.panel.style.transformOrigin = "100% 0";
+      // Shrink point: 8px to the right of panel's top-right corner
+      // (matches where the button will land)
+      ui.panel.style.transformOrigin = "calc(100% + 8px) 0";
 
       // Play reverse animation
       ui.panel.classList.add("popover-closing");
 
-      // Button will restore to its saved position (no drift)
-      if (savedButtonPos) {
-        buttonPos = savedButtonPos;
-      }
+      // Compute button landing point from panel's current position
+      const rect = ui.panel.getBoundingClientRect();
+      const newButtonX = rect.right + 8;
+      const newButtonY = rect.top;
+      buttonPos = clampPosition(newButtonX, newButtonY);
 
       setTimeout(() => {
         ui.panel.hidden = true;
@@ -579,9 +566,9 @@
 
         ui.toggle.classList.remove("is-hidden");
         applyButtonPosition(buttonPos);
+        saveButtonPosition();
 
         panelPos = null;
-        savedButtonPos = null;
         panelAnimating = false;
 
         if (ui.editor) ui.editor.hidden = true;
@@ -662,7 +649,6 @@
         return;
       }
 
-      // First-time: position the button just right of the video
       const smartPos = computeInitialButtonPosition();
       applyButtonPosition(clampPosition(smartPos.x, smartPos.y));
     }
@@ -1068,7 +1054,6 @@
       pre.textContent = text;
       Y.state.ui.lyrics.appendChild(pre);
 
-      // In text mode: show the control bar but hide the timing pill
       if (Y.state.ui.offsetRow) {
         Y.state.ui.offsetRow.hidden = false;
       }
