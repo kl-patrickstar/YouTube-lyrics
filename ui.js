@@ -822,19 +822,44 @@
       updateExtSection();
     }
 
-    function updateAppleMusicLink() {
-      if (!Y.state.ui || !Y.state.currentSong) return;
-      const { artist, title } = Y.state.currentSong;
-      if (!artist || artist === "Unknown" || !title || title === "Unknown") {
-        Y.state.ui.amLink.hidden = true;
-      } else {
-        const query = encodeURIComponent(`${artist} ${title}`);
-        Y.state.ui.amLink.href = `https://music.apple.com/search?term=${query}`;
-        Y.state.ui.amLink.hidden = false;
-      }
-      updateSpotifyLink();
-      updateExtSection();
-    }
+     function updateAppleMusicLink() {
+       if (!Y.state.ui || !Y.state.currentSong) return;
+       const { artist, title } = Y.state.currentSong;
+       if (!artist || artist === "Unknown" || !title || title === "Unknown") {
+         Y.state.ui.amLink.hidden = true;
+       } else {
+         // Start with a search fallback so the button always has a valid href
+         const query = encodeURIComponent(`${artist} ${title}`);
+         const locale = (navigator.language || "en-US").split("-")[1] || "US";
+         const country = locale.toLowerCase();
+         Y.state.ui.amLink.href = `https://music.apple.com/${country}/search?term=${query}`;
+         Y.state.ui.amLink.hidden = false;
+
+         // Try to resolve a DIRECT Apple Music song URL via iTunes Search API
+         resolveAppleMusicDirectLink(artist, title, country);
+       }
+       updateSpotifyLink();
+       updateExtSection();
+     }
+
+     async function resolveAppleMusicDirectLink(artist, title, country) {
+       try {
+         const query = encodeURIComponent(`${artist} ${title}`);
+         const url = `https://itunes.apple.com/search?term=${query}&media=music&entity=song&limit=1&country=${country}`;
+         const data = await Y.bridge.fetchJson(url);
+
+         const result = data?.results?.[0];
+         const trackViewUrl = result?.trackViewUrl;
+
+         if (trackViewUrl && Y.state.ui && Y.state.ui.amLink) {
+           // trackViewUrl looks like: https://music.apple.com/de/album/...?i=...
+           // Force it to open in the browser, not the app, by using the standard URL.
+           Y.state.ui.amLink.href = trackViewUrl;
+         }
+       } catch {
+         // Silently ignore — we already have the search fallback
+       }
+     }
 
     function updateSpotifyLink() {
       if (!Y.state.ui || !Y.state.ui.spLink || !Y.state.currentSong) return;
