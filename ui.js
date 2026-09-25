@@ -1,364 +1,517 @@
- (() => {
-    const Y = (globalThis.YTLY ??= {});
+// ============================================================
+//  ui.js
+//  All UI logic for the lyrics panel.
+//
+//  Responsibilities:
+//    - Build the Shadow DOM host + panel (see template.js for HTML)
+//    - Wire up every button, input and drag handler
+//    - Render lyrics, empty states, loading skeletons
+//    - Manage settings (load, save, apply)
+//    - Manage panel + button position (persisted per session)
+//    - Handle the popover open/close animation
+//
+//  Architecture:
+//    All state lives in the module-level variables below (buttonPos,
+//    panelPos, dragState, …). Y.state.ui holds the DOM element
+//    references so other modules can access them.
+//
+//  Exports (Y.ui):
+//    ensureUI, setPanelVisibility, togglePanel, setStatus, hideStatus,
+//    setLoading, loadSettings, applyTheme, applyFontSize, applyMode,
+//    setMode, updateUgLink, updateAppleMusicLink, updateSpotifyLink,
+//    updateArtwork, updateOffsetDisplay, updateExtSection, renderLyrics,
+//    renderEmptyState, loadButtonPosition, saveButtonPosition,
+//    applyButtonPosition, clampPosition, clampPanelPosition,
+//    applyPanelPosition, copyLyricsToClipboard, showToast,
+//    exportLyricsAsHTML
+// ============================================================
 
-    // ---------- Button-Position & Drag-State ----------
-    let buttonPos = { x: 0, y: 0 };
-    let dragState = null;
-    let suppressNextClick = false;
-    const DRAG_THRESHOLD = 5;
+(() => {
+   const Y = (globalThis.YTLY ??= {});
 
-    // ---------- Panel-Position & Drag-State ----------
-    let panelPos = null;
-    let panelDragState = null;
+   // --------------------------------------------------------
+   //  BUTTON POSITION & DRAG STATE
+   //  Tracks where the floating mic button is, plus its drag.
+   // --------------------------------------------------------
+   let buttonPos = { x: 0, y: 0 };
+   let dragState = null;
+   let suppressNextClick = false;
+   const DRAG_THRESHOLD = 5; // px before a click is treated as a drag
 
-    // ---------- Panel Drag rAF Batching ----------
-    let dragRafId = null;
-    let pendingDx = 0;
-    let pendingDy = 0;
+   // --------------------------------------------------------
+   //  PANEL POSITION & DRAG STATE
+   //  Tracks where the open panel is and its drag state.
+   // --------------------------------------------------------
+   let panelPos = null;
+   let panelDragState = null;
 
-    // ---------- Animation-State ----------
-    let panelAnimating = false;
-    const POPOVER_DURATION = 260;
+   // --------------------------------------------------------
+   //  PANEL DRAG rAF BATCHING
+   //  During drag, we batch transform updates to one per frame.
+   //  Without this, Chrome becomes sticky on high-refresh displays.
+   // --------------------------------------------------------
+   let dragRafId = null;
+   let pendingDx = 0;
+   let pendingDy = 0;
 
-    // ---------- Toast ----------
-    let toastTimer = null;
+   // --------------------------------------------------------
+   //  ANIMATION STATE
+   //  panelAnimating = true while the popover open/close
+   //  animation is running — prevents double-triggering.
+   // --------------------------------------------------------
+   let panelAnimating = false;
+   const POPOVER_DURATION = 260; // must match CSS --popover-duration
 
-    function ensureUI() {
-      let host = document.getElementById("yt-lyrics-extension-host");
+   // --------------------------------------------------------
+   //  TOAST TIMER
+   //  Used to auto-hide the toast after a short delay.
+   // --------------------------------------------------------
+   let toastTimer = null;
 
-      if (host && host.isConnected && Y.state.ui) {
-        return Y.state.ui;
-      }
+   // ============================================================
+   //  ENSURE UI
+   //  Builds the Shadow DOM host + panel if it doesn't exist yet,
+   //  and wires up all event listeners on the first call.
+   //  Idempotent: safe to call from anywhere at any time.
+   //
+   //  Why Shadow DOM?
+   //    Isolates our CSS from YouTube's, and vice versa. Nothing
+   //    inside the panel can leak out, and YouTube's global styles
+   //    can't accidentally affect us.
+   // ============================================================
+   function ensureUI() {
+     // Reuse existing UI if still attached to the DOM.
+     let host = document.getElementById("yt-lyrics-extension-host");
+     if (host && host.isConnected && Y.state.ui) {
+       return Y.state.ui;
+     }
 
-      if (host && !host.isConnected) {
-        host.remove();
-      }
+     // Remove stale host (YouTube SPA navigation can leave one behind).
+     if (host && !host.isConnected) {
+       host.remove();
+     }
 
-      host = document.createElement("div");
-      host.id = "yt-lyrics-extension-host";
-      host.style.cssText =
-        "position:fixed; top:84px; left:" + (window.innerWidth - 16) +
-        "px; right:auto; z-index:2147483647; width:0; height:0; display:none;";
+     // --- Create the host element ---
+     // The host is a tiny zero-size anchor; all visible content
+     // lives inside its shadow root.
+     host = document.createElement("div");
+     host.id = "yt-lyrics-extension-host";
+     host.style.cssText =
+       "position:fixed; top:84px; left:" + (window.innerWidth - 16) +
+       "px; right:auto; z-index:2147483647; width:0; height:0; display:none;";
 
-      document.documentElement.appendChild(host);
+     document.documentElement.appendChild(host);
 
-      const root = host.attachShadow({ mode: "open" });
-      root.innerHTML = Y.template.html;
+     // --- Attach Shadow DOM and inject template ---
+     const root = host.attachShadow({ mode: "open" });
+     root.innerHTML = Y.template.html;
 
-      const ui = {
-        host,
-        root,
-        panel: root.getElementById("panel"),
-        header: root.querySelector(".panel-header"),
-        toggle: root.getElementById("toggle"),
-        close: root.getElementById("close"),
-        title: root.getElementById("track-title"),
-        meta: root.getElementById("track-meta"),
-        reload: root.getElementById("reload"),
-        edit: root.getElementById("edit"),
-        editor: root.getElementById("editor"),
-        editorClose: root.getElementById("editor-close"),
-        artistInput: root.getElementById("artist-input"),
-        titleInput: root.getElementById("title-input"),
-        search: root.getElementById("search"),
-        status: root.getElementById("status"),
-        statusText: root.getElementById("status-text"),
-        statusClose: root.getElementById("status-close"),
-        lyrics: root.getElementById("lyrics"),
-        settingsBtn: root.getElementById("settings-btn"),
-        settings: root.getElementById("settings"),
-        settingsClose: root.getElementById("settings-close"),
-        settingsReset: root.getElementById("settings-reset"),
-        settingAutoScroll: root.getElementById("setting-autoscroll"),
-        settingTheme: root.getElementById("setting-theme"),
-        fontMinus: root.getElementById("font-minus"),
-        fontPlus: root.getElementById("font-plus"),
-        fontValue: root.getElementById("font-value"),
-        headerModeKaraoke: root.getElementById("header-mode-karaoke"),
-        headerModeText: root.getElementById("header-mode-text"),
-        offsetRow: root.getElementById("offset-row"),
-        groupTiming: root.getElementById("group-timing"),
-        sep0: root.getElementById("sep-0"),
-        timingPill: root.getElementById("timing-pill"),
-        offsetMinus: root.getElementById("offset-minus"),
-        offsetPlus: root.getElementById("offset-plus"),
-        offsetValue: root.getElementById("offset-value"),
-        groupListen: root.getElementById("group-listen"),
-        groupTabs: root.getElementById("group-tabs"),
-        groupActions: root.getElementById("group-actions"),
-        sep1: root.getElementById("sep-1"),
-        sep2: root.getElementById("sep-2"),
-        ugLink: root.getElementById("ug-link"),
-        amLink: root.getElementById("am-link"),
-        spLink: root.getElementById("sp-link"),
-        copyBtn: root.getElementById("copy-btn"),
-        printBtn: root.getElementById("print-btn"),
-        trackArt: root.getElementById("track-art"),
-        toast: root.getElementById("toast"),
-        toastText: root.getElementById("toast-text"),
-      };
+     // --- Gather references to all UI elements ---
+     // Every id here must exist in template.js's html string.
+     const ui = {
+       host,
+       root,
+       panel: root.getElementById("panel"),
+       header: root.querySelector(".panel-header"),
+       toggle: root.getElementById("toggle"),
+       close: root.getElementById("close"),
+       title: root.getElementById("track-title"),
+       meta: root.getElementById("track-meta"),
+       reload: root.getElementById("reload"),
+       edit: root.getElementById("edit"),
+       editor: root.getElementById("editor"),
+       editorClose: root.getElementById("editor-close"),
+       artistInput: root.getElementById("artist-input"),
+       titleInput: root.getElementById("title-input"),
+       search: root.getElementById("search"),
+       status: root.getElementById("status"),
+       statusText: root.getElementById("status-text"),
+       statusClose: root.getElementById("status-close"),
+       lyrics: root.getElementById("lyrics"),
+       settingsBtn: root.getElementById("settings-btn"),
+       settings: root.getElementById("settings"),
+       settingsClose: root.getElementById("settings-close"),
+       settingsReset: root.getElementById("settings-reset"),
+       settingAutoScroll: root.getElementById("setting-autoscroll"),
+       settingTheme: root.getElementById("setting-theme"),
+       fontMinus: root.getElementById("font-minus"),
+       fontPlus: root.getElementById("font-plus"),
+       fontValue: root.getElementById("font-value"),
+       headerModeKaraoke: root.getElementById("header-mode-karaoke"),
+       headerModeText: root.getElementById("header-mode-text"),
+       offsetRow: root.getElementById("offset-row"),
+       groupTiming: root.getElementById("group-timing"),
+       sep0: root.getElementById("sep-0"),
+       timingPill: root.getElementById("timing-pill"),
+       offsetMinus: root.getElementById("offset-minus"),
+       offsetPlus: root.getElementById("offset-plus"),
+       offsetValue: root.getElementById("offset-value"),
+       groupListen: root.getElementById("group-listen"),
+       groupTabs: root.getElementById("group-tabs"),
+       groupActions: root.getElementById("group-actions"),
+       sep1: root.getElementById("sep-1"),
+       sep2: root.getElementById("sep-2"),
+       ugLink: root.getElementById("ug-link"),
+       amLink: root.getElementById("am-link"),
+       spLink: root.getElementById("sp-link"),
+       copyBtn: root.getElementById("copy-btn"),
+       printBtn: root.getElementById("print-btn"),
+       trackArt: root.getElementById("track-art"),
+       toast: root.getElementById("toast"),
+       toastText: root.getElementById("toast-text"),
+     };
 
-      Y.state.ui = ui;
+     Y.state.ui = ui;
 
-      // ---------- Toggle Button ----------
-      ui.toggle.addEventListener("click", () => {
-        if (suppressNextClick) {
-          suppressNextClick = false;
-          return;
-        }
-        togglePanel();
-      });
+     // ============================================================
+     //  TOGGLE BUTTON — CLICK
+     //  Opens or closes the panel. Suppressed if the click was
+     //  actually the end of a drag gesture.
+     // ============================================================
+     ui.toggle.addEventListener("click", () => {
+       if (suppressNextClick) {
+         suppressNextClick = false;
+         return;
+       }
+       togglePanel();
+     });
 
-      // ---------- Toggle Drag ----------
-      ui.toggle.addEventListener("pointerdown", (event) => {
-        if (event.pointerType === "mouse" && event.button !== 0) return;
-        if (panelAnimating) return;
-        dragState = {
-          pointerId: event.pointerId,
-          startX: event.clientX,
-          startY: event.clientY,
-          originX: buttonPos.x,
-          originY: buttonPos.y,
-          moved: false,
-        };
-        ui.toggle.setPointerCapture(event.pointerId);
-      });
+     // ============================================================
+     //  TOGGLE BUTTON — DRAG
+     //  The mic button can be dragged anywhere on the viewport.
+     //  Uses pointer events + setPointerCapture so the drag keeps
+     //  working even if the pointer leaves the button.
+     // ============================================================
+     ui.toggle.addEventListener("pointerdown", (event) => {
+       if (event.pointerType === "mouse" && event.button !== 0) return;
+       if (panelAnimating) return;
+       dragState = {
+         pointerId: event.pointerId,
+         startX: event.clientX,
+         startY: event.clientY,
+         originX: buttonPos.x,
+         originY: buttonPos.y,
+         moved: false,
+       };
+       ui.toggle.setPointerCapture(event.pointerId);
+     });
 
-      ui.toggle.addEventListener("pointermove", (event) => {
-        if (!dragState || event.pointerId !== dragState.pointerId) return;
-        const dx = event.clientX - dragState.startX;
-        const dy = event.clientY - dragState.startY;
+     ui.toggle.addEventListener("pointermove", (event) => {
+       if (!dragState || event.pointerId !== dragState.pointerId) return;
+       const dx = event.clientX - dragState.startX;
+       const dy = event.clientY - dragState.startY;
 
-        if (!dragState.moved && Math.hypot(dx, dy) > DRAG_THRESHOLD) {
-          dragState.moved = true;
-          ui.toggle.classList.add("dragging");
-        }
+       // Only start "real" dragging after the threshold — prevents
+       // tiny mouse movements from accidentally triggering drag.
+       if (!dragState.moved && Math.hypot(dx, dy) > DRAG_THRESHOLD) {
+         dragState.moved = true;
+         ui.toggle.classList.add("dragging");
+       }
 
-        if (dragState.moved) {
-          applyButtonPosition(
-            clampPosition(dragState.originX + dx, dragState.originY + dy)
-          );
-        }
-      });
+       if (dragState.moved) {
+         applyButtonPosition(
+           clampPosition(dragState.originX + dx, dragState.originY + dy)
+         );
+       }
+     });
 
-      ui.toggle.addEventListener("pointerup", (event) => {
-        if (!dragState || event.pointerId !== dragState.pointerId) return;
-        const moved = dragState.moved;
-        dragState = null;
-        ui.toggle.classList.remove("dragging");
+     ui.toggle.addEventListener("pointerup", (event) => {
+       if (!dragState || event.pointerId !== dragState.pointerId) return;
+       const moved = dragState.moved;
+       dragState = null;
+       ui.toggle.classList.remove("dragging");
 
-        if (moved) {
-          suppressNextClick = true;
-          saveButtonPosition();
-        }
-      });
+       if (moved) {
+         // Drag ended — suppress the next click so it doesn't
+         // accidentally open/close the panel.
+         suppressNextClick = true;
+         saveButtonPosition();
+       }
+     });
 
-      ui.toggle.addEventListener("pointercancel", () => {
-        dragState = null;
-        ui.toggle.classList.remove("dragging");
-      });
+     ui.toggle.addEventListener("pointercancel", () => {
+       dragState = null;
+       ui.toggle.classList.remove("dragging");
+     });
 
-      // ---------- Panel Drag ----------
-      if (ui.header) {
-        ui.header.addEventListener("pointerdown", (event) => {
-          const target = event.composedPath?.()[0] || event.target;
-          if (target && target.closest && target.closest("button, a, input, select")) {
-            return;
-          }
-          if (event.pointerType === "mouse" && event.button !== 0) return;
-          if (panelAnimating) return;
+     // ============================================================
+     //  PANEL — DRAG (via header)
+     //  Dragging the header moves the entire panel. The transform
+     //  is applied during the drag (rAF-batched for smoothness on
+     //  Chrome); the final position is committed on pointerup.
+     // ============================================================
+     if (ui.header) {
+       ui.header.addEventListener("pointerdown", (event) => {
+         // Ignore clicks on interactive elements inside the header
+         const target = event.composedPath?.()[0] || event.target;
+         if (target && target.closest && target.closest("button, a, input, select")) {
+           return;
+         }
+         if (event.pointerType === "mouse" && event.button !== 0) return;
+         if (panelAnimating) return;
 
-          const rect = ui.panel.getBoundingClientRect();
-          panelDragState = {
-            pointerId: event.pointerId,
-            startX: event.clientX,
-            startY: event.clientY,
-            originX: rect.left,
-            originY: rect.top,
-            moved: false,
-          };
-          ui.header.setPointerCapture(event.pointerId);
-        });
+         const rect = ui.panel.getBoundingClientRect();
+         panelDragState = {
+           pointerId: event.pointerId,
+           startX: event.clientX,
+           startY: event.clientY,
+           originX: rect.left,
+           originY: rect.top,
+           moved: false,
+         };
+         ui.header.setPointerCapture(event.pointerId);
+       });
 
-        ui.header.addEventListener("pointermove", (event) => {
-          if (!panelDragState || event.pointerId !== panelDragState.pointerId) return;
-          const dx = event.clientX - panelDragState.startX;
-          const dy = event.clientY - panelDragState.startY;
+       ui.header.addEventListener("pointermove", (event) => {
+         if (!panelDragState || event.pointerId !== panelDragState.pointerId) return;
+         const dx = event.clientX - panelDragState.startX;
+         const dy = event.clientY - panelDragState.startY;
 
-          if (!panelDragState.moved && Math.hypot(dx, dy) > DRAG_THRESHOLD) {
-            panelDragState.moved = true;
-            ui.panel.classList.add("dragging");
-          }
+         if (!panelDragState.moved && Math.hypot(dx, dy) > DRAG_THRESHOLD) {
+           panelDragState.moved = true;
+           ui.panel.classList.add("dragging");
+         }
 
-          if (!panelDragState.moved) return;
+         if (!panelDragState.moved) return;
 
-          pendingDx = dx;
-          pendingDy = dy;
+         // rAF batching: only apply one transform update per frame
+         pendingDx = dx;
+         pendingDy = dy;
+         if (dragRafId) return;
 
-          if (dragRafId) return;
+         dragRafId = requestAnimationFrame(() => {
+           dragRafId = null;
+           ui.panel.style.transform = `translate(${pendingDx}px, ${pendingDy}px)`;
+         });
+       });
 
-          dragRafId = requestAnimationFrame(() => {
-            dragRafId = null;
-            ui.panel.style.transform = `translate(${pendingDx}px, ${pendingDy}px)`;
-          });
-        });
+       ui.header.addEventListener("pointerup", (event) => {
+         if (!panelDragState || event.pointerId !== panelDragState.pointerId) return;
 
-        ui.header.addEventListener("pointerup", (event) => {
-          if (!panelDragState || event.pointerId !== panelDragState.pointerId) return;
+         if (dragRafId) {
+           cancelAnimationFrame(dragRafId);
+           dragRafId = null;
+         }
 
-          if (dragRafId) {
-            cancelAnimationFrame(dragRafId);
-            dragRafId = null;
-          }
+         const moved = panelDragState.moved;
+         const startX = panelDragState.originX;
+         const startY = panelDragState.originY;
+         const dx = event.clientX - panelDragState.startX;
+         const dy = event.clientY - panelDragState.startY;
 
-          const moved = panelDragState.moved;
-          const startX = panelDragState.originX;
-          const startY = panelDragState.originY;
-          const dx = event.clientX - panelDragState.startX;
-          const dy = event.clientY - panelDragState.startY;
+         panelDragState = null;
+         ui.panel.classList.remove("dragging");
 
-          panelDragState = null;
-          ui.panel.classList.remove("dragging");
+         if (moved) {
+           // Commit: clear transform, apply final left/top once
+           ui.panel.style.transform = "";
+           applyPanelPosition(
+             clampPanelPosition(startX + dx, startY + dy)
+           );
+         }
+       });
 
-          if (moved) {
-            ui.panel.style.transform = "";
-            applyPanelPosition(
-              clampPanelPosition(startX + dx, startY + dy)
-            );
-          }
-        });
+       ui.header.addEventListener("pointercancel", () => {
+         if (dragRafId) {
+           cancelAnimationFrame(dragRafId);
+           dragRafId = null;
+         }
+         panelDragState = null;
+         ui.panel.classList.remove("dragging");
+         ui.panel.style.transform = "";
+       });
+     }
 
-        ui.header.addEventListener("pointercancel", () => {
-          if (dragRafId) {
-            cancelAnimationFrame(dragRafId);
-            dragRafId = null;
-          }
-          panelDragState = null;
-          ui.panel.classList.remove("dragging");
-          ui.panel.style.transform = "";
-        });
-      }
+     // ============================================================
+     //  CLOSE BUTTON
+     //  Closes the panel via the popover animation and marks
+     //  this video as "manually closed" in sessionStorage so
+     //  it doesn't re-open automatically on refresh.
+     // ============================================================
+     ui.close.addEventListener("click", () => {
+       closePanelToButton();
+       const currentId = Y.youtube.getVideoId();
+       if (currentId) {
+         try {
+           sessionStorage.setItem(`ytlyrics_closed_${currentId}`, "true");
+         } catch (e) {}
+       }
+     });
 
-      ui.close.addEventListener("click", () => {
-        closePanelToButton();
-        const currentId = Y.youtube.getVideoId();
-        if (currentId) {
-          try {
-            sessionStorage.setItem(`ytlyrics_closed_${currentId}`, "true");
-          } catch (e) {}
-        }
-      });
+     // ============================================================
+     //  RELOAD BUTTON
+     //  Forces a full refresh (bypasses lyrics cache).
+     // ============================================================
+     ui.reload.addEventListener("click", () => Y.controller.refresh({ force: true }));
 
-      ui.reload.addEventListener("click", () => Y.controller.refresh({ force: true }));
+     // ============================================================
+     //  EDIT (SEARCH) DRAWER — TOGGLE
+     //  Opens the manual search form. Only one drawer can be open
+     //  at a time, so opening it closes the settings drawer.
+     // ============================================================
+     ui.edit.addEventListener("click", () => {
+       const willOpen = ui.editor.hidden;
+       ui.editor.hidden = !willOpen;
+       ui.settings.hidden = true;
+       ui.edit.classList.toggle("active", willOpen);
+       ui.settingsBtn.classList.remove("active");
+     });
 
-      ui.edit.addEventListener("click", () => {
-        const willOpen = ui.editor.hidden;
-        ui.editor.hidden = !willOpen;
-        ui.settings.hidden = true;
-        ui.edit.classList.toggle("active", willOpen);
-        ui.settingsBtn.classList.remove("active");
-      });
+     if (ui.editorClose) {
+       ui.editorClose.addEventListener("click", () => {
+         ui.editor.hidden = true;
+         ui.edit.classList.remove("active");
+       });
+     }
 
-      if (ui.editorClose) {
-        ui.editorClose.addEventListener("click", () => {
-          ui.editor.hidden = true;
-          ui.edit.classList.remove("active");
-        });
-      }
+     // ============================================================
+     //  SETTINGS DRAWER — TOGGLE
+     // ============================================================
+     ui.settingsBtn.addEventListener("click", () => {
+       const willOpen = ui.settings.hidden;
+       ui.settings.hidden = !willOpen;
+       ui.editor.hidden = true;
+       ui.settingsBtn.classList.toggle("active", willOpen);
+       ui.edit.classList.remove("active");
+     });
 
-      ui.settingsBtn.addEventListener("click", () => {
-        const willOpen = ui.settings.hidden;
-        ui.settings.hidden = !willOpen;
-        ui.editor.hidden = true;
-        ui.settingsBtn.classList.toggle("active", willOpen);
-        ui.edit.classList.remove("active");
-      });
+     if (ui.settingsClose) {
+       ui.settingsClose.addEventListener("click", () => {
+         ui.settings.hidden = true;
+         ui.settingsBtn.classList.remove("active");
+       });
+     }
 
-      if (ui.settingsClose) {
-        ui.settingsClose.addEventListener("click", () => {
-          ui.settings.hidden = true;
-          ui.settingsBtn.classList.remove("active");
-        });
-      }
+     // ============================================================
+     //  SEARCH BUTTON — run manual search
+     // ============================================================
+     ui.search.addEventListener("click", () => Y.controller.manualSearch());
 
-      ui.search.addEventListener("click", () => Y.controller.manualSearch());
-      // Dismiss status on click
-      if (ui.statusClose) {
-          ui.statusClose.addEventListener("click", () => {
-            hideStatus();
-          });
-        }
+     // ============================================================
+     //  STATUS DISMISS
+     //  Allows the user to manually hide the info banner.
+     // ============================================================
+     if (ui.statusClose) {
+       ui.statusClose.addEventListener("click", () => {
+         hideStatus();
+       });
+     }
 
-      if (ui.settingAutoScroll) {
-        ui.settingAutoScroll.addEventListener("click", async () => {
-          const newVal = ui.settingAutoScroll.getAttribute("aria-checked") !== "true";
-          ui.settingAutoScroll.setAttribute("aria-checked", String(newVal));
-          Y.state.settings.autoScroll = newVal;
-          await saveSettings();
-        });
-      }
+     // ============================================================
+     //  SETTING: AUTO-SCROLL TOGGLE
+     //  iOS-style switch — click toggles the aria-checked state.
+     // ============================================================
+     if (ui.settingAutoScroll) {
+       ui.settingAutoScroll.addEventListener("click", async () => {
+         const newVal = ui.settingAutoScroll.getAttribute("aria-checked") !== "true";
+         ui.settingAutoScroll.setAttribute("aria-checked", String(newVal));
+         Y.state.settings.autoScroll = newVal;
+         await saveSettings();
+       });
+     }
 
-      ui.settingTheme.addEventListener("change", async () => {
-        Y.state.settings.theme = ui.settingTheme.value;
-        await saveSettings();
-        applyTheme();
-      });
+     // ============================================================
+     //  SETTING: THEME DROPDOWN
+     // ============================================================
+     ui.settingTheme.addEventListener("change", async () => {
+       Y.state.settings.theme = ui.settingTheme.value;
+       await saveSettings();
+       applyTheme();
+     });
 
-      ui.fontMinus.addEventListener("click", () => changeFontSize(-1));
-      ui.fontPlus.addEventListener("click", () => changeFontSize(1));
+     // ============================================================
+     //  SETTING: FONT SIZE
+     // ============================================================
+     ui.fontMinus.addEventListener("click", () => changeFontSize(-1));
+     ui.fontPlus.addEventListener("click", () => changeFontSize(1));
 
-      if (ui.settingsReset) {
-        ui.settingsReset.addEventListener("click", async () => {
-          resetAllSettings();
-        });
-      }
+     // ============================================================
+     //  SETTING: RESET ALL
+     // ============================================================
+     if (ui.settingsReset) {
+       ui.settingsReset.addEventListener("click", async () => {
+         resetAllSettings();
+       });
+     }
 
-      ui.headerModeKaraoke.addEventListener("click", () => setMode("karaoke"));
-      ui.headerModeText.addEventListener("click", () => setMode("text"));
+     // ============================================================
+     //  MODE SWITCHER (header)
+     //  Karaoke ↔ Full Lyrics
+     // ============================================================
+     ui.headerModeKaraoke.addEventListener("click", () => setMode("karaoke"));
+     ui.headerModeText.addEventListener("click", () => setMode("text"));
 
-      attachOffsetHold(ui.offsetMinus, -1);
-      attachOffsetHold(ui.offsetPlus, 1);
-      ui.offsetValue.addEventListener("click", () => Y.sync.resetOffset());
+     // ============================================================
+     //  TIMING OFFSET PILL
+     //  Tap = ±0.5s, hold = ±5s repeat. Value click resets.
+     // ============================================================
+     attachOffsetHold(ui.offsetMinus, -1);
+     attachOffsetHold(ui.offsetPlus, 1);
+     ui.offsetValue.addEventListener("click", () => Y.sync.resetOffset());
 
-      if (ui.copyBtn) {
-        ui.copyBtn.addEventListener("click", () => copyLyricsToClipboard());
-      }
+     // ============================================================
+     //  COPY + PRINT BUTTONS
+     // ============================================================
+     if (ui.copyBtn) {
+       ui.copyBtn.addEventListener("click", () => copyLyricsToClipboard());
+     }
 
-      if (ui.printBtn) {
-        ui.printBtn.addEventListener("click", () => exportLyricsAsHTML());
-      }
+     if (ui.printBtn) {
+       ui.printBtn.addEventListener("click", () => exportLyricsAsHTML());
+     }
 
-      [ui.artistInput, ui.titleInput].forEach((input) => {
-        input.addEventListener("keydown", (event) => {
-          if (event.key === "Enter") {
-            Y.controller.manualSearch();
-          }
-        });
-      });
+     // ============================================================
+     //  SEARCH INPUTS — Enter to search
+     // ============================================================
+     [ui.artistInput, ui.titleInput].forEach((input) => {
+       input.addEventListener("keydown", (event) => {
+         if (event.key === "Enter") {
+           Y.controller.manualSearch();
+         }
+       });
+     });
 
-      ["keydown", "keyup", "keypress"].forEach((type) => {
-        host.addEventListener(type, (event) => {
-          if (event.metaKey) return;
-          event.stopPropagation();
-        });
-      });
+     // ============================================================
+     //  STOP KEYBOARD EVENTS FROM LEAKING TO YOUTUBE
+     //  YouTube has global keyboard shortcuts (space = play/pause,
+     //  k, j, l, etc.). We stop propagation from our shadow host
+     //  (except for meta-key shortcuts like ⌘⇧L).
+     // ============================================================
+     ["keydown", "keyup", "keypress"].forEach((type) => {
+       host.addEventListener(type, (event) => {
+         if (event.metaKey) return;
+         event.stopPropagation();
+       });
+     });
 
-      applySettings();
-      loadButtonPosition();
+     // ============================================================
+     //  INITIAL APPLY
+     //  Apply stored settings and positions once the UI is built.
+     // ============================================================
+     applySettings();
+     loadButtonPosition();
 
-      window.addEventListener("resize", () => {
-        applyButtonPosition(clampPosition(buttonPos.x, buttonPos.y));
-      });
+     // ============================================================
+     //  RESIZE — keep the button inside the viewport
+     // ============================================================
+     window.addEventListener("resize", () => {
+       applyButtonPosition(clampPosition(buttonPos.x, buttonPos.y));
+     });
 
-      return ui;
-    }
+     return ui;
+   }
 
     // ============================================================
-    //  Offset Pill
+    //  OFFSET PILL — TAP + HOLD HANDLER
+    //  Tap (±button): change offset by 0.5s
+    //  Hold (>400ms): after a short pause, repeat +5s every 130ms
+    //
+    //  The visual fill animation is driven by CSS classes
+    //  (pressing, holding) — see template.js.
     // ============================================================
     function attachOffsetHold(button, direction) {
-      const HOLD_DELAY = 400;
-      const REPEAT_INTERVAL = 130;
+      const HOLD_DELAY = 400;      // ms before "hold mode" kicks in
+      const REPEAT_INTERVAL = 130; // ms between repeat steps
 
       let holdTimer = null;
       let repeatTimer = null;
@@ -377,8 +530,10 @@
         cleanup();
         button.classList.add("pressing");
 
+        // Immediate fine step — gives instant feedback on tap.
         fireFine();
 
+        // After HOLD_DELAY ms, switch to coarse repeat mode.
         holdTimer = setTimeout(() => {
           holdTimer = null;
           button.classList.remove("pressing");
@@ -393,6 +548,7 @@
       button.addEventListener("pointerup", cleanup);
       button.addEventListener("pointercancel", cleanup);
 
+      // Keyboard support: Enter / Space → fine step
       button.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
@@ -402,7 +558,11 @@
     }
 
     // ============================================================
-    //  Toast
+    //  TOAST
+    //  Shows a small pill near the bottom of the panel with a
+    //  status message ("Lyrics copied", "Settings reset", ...).
+    //  Auto-hides after 1.5 s. Calling it again while visible
+    //  resets the timer.
     // ============================================================
     function showToast(text) {
       const ui = Y.state.ui;
@@ -423,12 +583,17 @@
     }
 
     // ============================================================
-    //  Copy
+    //  COPY LYRICS TO CLIPBOARD
+    //  Builds the final text (title — artist + blank line + lyrics)
+    //  and copies it. Uses the modern Clipboard API first, and
+    //  falls back to a hidden textarea + execCommand for older
+    //  browsers or non-secure contexts.
     // ============================================================
     async function copyLyricsToClipboard() {
       const lyrics = Y.state.lastLyrics;
       if (!lyrics) return;
 
+      // --- 1. Get the raw lyrics text (prefer synced over plain) ---
       let bodyText = "";
 
       if (lyrics.syncedLyrics) {
@@ -445,6 +610,7 @@
       bodyText = (bodyText || "").trim();
       if (!bodyText) return;
 
+      // --- 2. Prepend a title/artist header ---
       const song = Y.state.currentSong || {};
       const title = song.title || "";
       const artist = song.artist && song.artist !== "Unknown" ? song.artist : "";
@@ -452,6 +618,7 @@
       const header = [title, artist].filter(Boolean).join(" — ");
       const fullText = header ? `${header}\n\n${bodyText}` : bodyText;
 
+      // --- 3. Try the modern Clipboard API first ---
       let ok = false;
 
       try {
@@ -463,6 +630,7 @@
         ok = false;
       }
 
+      // --- 4. Fallback: hidden textarea + execCommand ---
       if (!ok) {
         try {
           const ta = document.createElement("textarea");
@@ -482,16 +650,14 @@
         }
       }
 
-      if (ok) {
-        showToast("Lyrics copied");
-      } else {
-        showToast("Copy failed");
-      }
+      showToast(ok ? "Lyrics copied" : "Copy failed");
     }
 
     // ============================================================
     //  OPEN PANEL FROM BUTTON (popover in)
-    //  Panel opens to the LEFT of button with an 8px gap.
+    //  Opens the panel to the LEFT of the button with an 8px gap.
+    //  The panel grows out of the button using a scale animation
+    //  with a dynamic transform-origin (see template.js keyframes).
     // ============================================================
     function openPanelFromButton() {
       const ui = Y.state.ui;
@@ -499,7 +665,7 @@
 
       panelAnimating = true;
 
-      // Reveal panel invisibly to measure size
+      // 1. Reveal panel invisibly to measure its size
       ui.panel.hidden = false;
       ui.panel.style.visibility = "hidden";
       ui.panel.classList.remove("popover-opening", "popover-closing");
@@ -507,7 +673,7 @@
       const w = ui.panel.offsetWidth;
       const h = ui.panel.offsetHeight;
 
-      // Target position: 8px to the LEFT of button
+      // 2. Compute target position: 8px to the LEFT of button
       const margin = 8;
       const vw = window.innerWidth;
       const vh = window.innerHeight;
@@ -515,23 +681,29 @@
       let left = buttonPos.x - w - 8;
       let top = buttonPos.y;
 
+      // Clamp to viewport
       if (left < margin) left = margin;
       if (left + w > vw - margin) left = vw - w - margin;
       if (top + h > vh - margin) top = vh - h - margin;
       if (top < margin) top = margin;
 
+      // 3. Apply position
       ui.panel.style.left = `${left}px`;
       ui.panel.style.top = `${top}px`;
       ui.panel.style.right = "auto";
       ui.panel.style.bottom = "auto";
 
-      // transform-origin = button's top-left corner, relative to panel
+      // 4. Set transform-origin to the button's top-left corner
+      //    (relative to the panel) so the scale animation starts
+      //    from the button itself.
       const originX = buttonPos.x - left;
       const originY = buttonPos.y - top;
       ui.panel.style.transformOrigin = `${originX}px ${originY}px`;
 
+      // 5. Hide the button, show the panel
       ui.toggle.classList.add("is-hidden");
 
+      // 6. Play the opening animation
       ui.panel.style.visibility = "";
       ui.panel.classList.add("popover-opening");
 
@@ -545,8 +717,9 @@
 
     // ============================================================
     //  CLOSE PANEL TO BUTTON (popover out)
-    //  Panel shrinks to its TOP-RIGHT corner + 8px (no visual jump).
-    //  Button lands at that exact point → no drift, no jump.
+    //  Panel shrinks back to its top-right corner + 8px.
+    //  The button reappears at that exact point → no visible
+    //  jump or drift, regardless of how the user moved the panel.
     // ============================================================
     function closePanelToButton() {
       const ui = Y.state.ui;
@@ -555,7 +728,7 @@
 
       panelAnimating = true;
 
-      // Shrink point: 8px to the right of panel's top-right corner
+      // Shrink point: 8px to the right of the panel's top-right corner
       // (matches where the button will land)
       ui.panel.style.transformOrigin = "calc(100% + 8px) 0";
 
@@ -579,6 +752,7 @@
         panelPos = null;
         panelAnimating = false;
 
+        // Close any open drawers
         if (ui.editor) ui.editor.hidden = true;
         if (ui.settings) ui.settings.hidden = true;
         if (ui.edit) ui.edit.classList.remove("active");
@@ -586,6 +760,11 @@
       }, POPOVER_DURATION + 20);
     }
 
+    // ============================================================
+    //  TOGGLE PANEL
+    //  Opens or closes depending on current state.
+    //  Ignores calls while an animation is running.
+    // ============================================================
     function togglePanel() {
       const ui = Y.state.ui;
       if (!ui || panelAnimating) return;
@@ -599,7 +778,9 @@
     }
 
     // ============================================================
-    //  Button Position
+    //  BUTTON POSITION
+    //  Clamp + apply the mic button position. Persisted via
+    //  saveButtonPosition / loadButtonPosition.
     // ============================================================
     function clampPosition(x, y) {
       const margin = 8;
@@ -620,7 +801,8 @@
     }
 
     // ============================================================
-    //  Panel Position
+    //  PANEL POSITION
+    //  Clamp + apply the panel position.
     // ============================================================
     function clampPanelPosition(x, y) {
       const ui = Y.state.ui;
@@ -649,6 +831,11 @@
       ui.panel.style.bottom = "auto";
     }
 
+    // ============================================================
+    //  LOAD BUTTON POSITION
+    //  Restores the last position from storage, or picks a
+    //  sensible initial spot (right of the video) on first run.
+    // ============================================================
     async function loadButtonPosition() {
       const stored = await Y.bridge.getFromCache("ytlyrics_buttonpos");
 
@@ -661,6 +848,12 @@
       applyButtonPosition(clampPosition(smartPos.x, smartPos.y));
     }
 
+    // ============================================================
+    //  COMPUTE INITIAL BUTTON POSITION
+    //  First-run placement: just right of the video player,
+    //  slightly below its top edge. Falls back to a fixed spot
+    //  if no <video> is found yet.
+    // ============================================================
     function computeInitialButtonPosition() {
       const vw = window.innerWidth;
       const buttonSize = 44;
@@ -674,10 +867,12 @@
         let x = rect.right + margin;
         let y = rect.top + 24;
 
+        // If the button would overflow the right edge, pull it in.
         if (x + buttonSize > vw - 16) {
           x = vw - buttonSize - 24;
         }
 
+        // Keep below YouTube's header bar.
         if (y < 84) y = 84;
 
         return { x, y };
@@ -691,25 +886,29 @@
     }
 
     // ============================================================
-    //  Status & Loading
+    //  STATUS & LOADING
     // ============================================================
-     function setStatus(text, isError = false) {
-       if (!Y.state.ui) return;
-       Y.state.ui.status.hidden = false;
-       if (Y.state.ui.statusText) {
-         Y.state.ui.statusText.textContent = text;
-       } else {
-         // Fallback (falls statusText nicht gefunden wurde)
-         Y.state.ui.status.textContent = text;
-       }
-       Y.state.ui.status.classList.toggle("error", isError);
-     }
+
+    // Show the status banner. `isError` switches to the red style.
+    // The optional close button is wired up in ensureUI.
+    function setStatus(text, isError = false) {
+      if (!Y.state.ui) return;
+      Y.state.ui.status.hidden = false;
+      if (Y.state.ui.statusText) {
+        Y.state.ui.statusText.textContent = text;
+      } else {
+        // Fallback (in case the template hasn't got a #status-text)
+        Y.state.ui.status.textContent = text;
+      }
+      Y.state.ui.status.classList.toggle("error", isError);
+    }
 
     function hideStatus() {
       if (!Y.state.ui) return;
       Y.state.ui.status.hidden = true;
     }
 
+    // Renders a shimmer skeleton while lyrics are being fetched.
     function setLoading() {
       if (!Y.state.ui) return;
 
@@ -719,6 +918,7 @@
       skeleton.className = "skeleton";
       skeleton.setAttribute("aria-hidden", "true");
 
+      // Different widths for a natural "text" look
       const widths = [94, 82, 88, 68, 90, 74, 62];
       widths.forEach((width) => {
         const line = document.createElement("div");
@@ -732,7 +932,7 @@
     }
 
     // ============================================================
-    //  Settings
+    //  SETTINGS — LOAD / SAVE / APPLY
     // ============================================================
     async function loadSettings() {
       const stored = await Y.bridge.getFromCache("ytlyrics_settings");
@@ -746,6 +946,7 @@
       await Y.bridge.saveToCache("ytlyrics_settings", Y.state.settings);
     }
 
+    // Pushes the current settings values into the UI controls.
     function applySettings() {
       if (Y.state.ui) {
         if (Y.state.ui.settingAutoScroll) {
@@ -761,6 +962,7 @@
       applyMode();
     }
 
+    // Highlights the correct button in the mode switcher.
     function applyMode() {
       if (!Y.state.ui) return;
       const karaoke = Y.state.settings.mode !== "text";
@@ -775,6 +977,7 @@
       }
     }
 
+    // Change mode + persist + re-render lyrics with the new mode.
     async function setMode(mode) {
       if (Y.state.settings.mode === mode) return;
       Y.state.settings.mode = mode;
@@ -783,6 +986,7 @@
       if (Y.state.lastLyrics) renderLyrics(Y.state.lastLyrics);
     }
 
+    // Apply font size to the panel via a CSS variable.
     function applyFontSize() {
       if (!Y.state.ui) return;
       Y.state.ui.panel.style.setProperty("--lyrics-font-size", `${Y.state.settings.fontSize}px`);
@@ -795,6 +999,8 @@
       await saveSettings();
     }
 
+    // Toggle the theme-light class on the panel based on settings
+    // and (for "auto") YouTube's own dark-mode attribute.
     function applyTheme() {
       if (!Y.state.ui) return;
       let light = false;
@@ -806,12 +1012,13 @@
       Y.state.ui.panel.classList.toggle("theme-light", light);
     }
 
+    // Reset all settings to defaults + re-render.
     async function resetAllSettings() {
       Y.state.settings.autoScroll = true;
       Y.state.settings.theme = "auto";
       Y.state.settings.fontSize = 17;
       Y.state.settings.mode = "karaoke";
-      delete Y.state.settings.autoOpen;
+      delete Y.state.settings.autoOpen; // legacy key
       await saveSettings();
       applySettings();
       if (Y.state.lastLyrics) renderLyrics(Y.state.lastLyrics);
@@ -819,8 +1026,12 @@
     }
 
     // ============================================================
-    //  External Links
+    //  EXTERNAL LINKS
+    //  Ultimate Guitar (tabs), Apple Music, Spotify.
+    //  Each link is hidden until the song metadata is known.
     // ============================================================
+
+    // Ultimate Guitar search by artist + title
     function updateUgLink() {
       if (!Y.state.ui || !Y.state.currentSong) return;
       const { artist, title } = Y.state.currentSong;
@@ -835,45 +1046,47 @@
       updateExtSection();
     }
 
-     function updateAppleMusicLink() {
-       if (!Y.state.ui || !Y.state.currentSong) return;
-       const { artist, title } = Y.state.currentSong;
-       if (!artist || artist === "Unknown" || !title || title === "Unknown") {
-         Y.state.ui.amLink.hidden = true;
-       } else {
-         // Start with a search fallback so the button always has a valid href
-         const query = encodeURIComponent(`${artist} ${title}`);
-         const locale = (navigator.language || "en-US").split("-")[1] || "US";
-         const country = locale.toLowerCase();
-         Y.state.ui.amLink.href = `https://music.apple.com/${country}/search?term=${query}`;
-         Y.state.ui.amLink.hidden = false;
+    // Apple Music — start with a search URL, then try to upgrade
+    // it to a direct song URL via the iTunes Search API.
+    function updateAppleMusicLink() {
+      if (!Y.state.ui || !Y.state.currentSong) return;
+      const { artist, title } = Y.state.currentSong;
+      if (!artist || artist === "Unknown" || !title || title === "Unknown") {
+        Y.state.ui.amLink.hidden = true;
+      } else {
+        const query = encodeURIComponent(`${artist} ${title}`);
+        const locale = (navigator.language || "en-US").split("-")[1] || "US";
+        const country = locale.toLowerCase();
+        Y.state.ui.amLink.href = `https://music.apple.com/${country}/search?term=${query}`;
+        Y.state.ui.amLink.hidden = false;
 
-         // Try to resolve a DIRECT Apple Music song URL via iTunes Search API
-         resolveAppleMusicDirectLink(artist, title, country);
-       }
-       updateSpotifyLink();
-       updateExtSection();
-     }
+        // Async: try to replace the search URL with a direct song URL.
+        resolveAppleMusicDirectLink(artist, title, country);
+      }
+      updateSpotifyLink();
+      updateExtSection();
+    }
 
-     async function resolveAppleMusicDirectLink(artist, title, country) {
-       try {
-         const query = encodeURIComponent(`${artist} ${title}`);
-         const url = `https://itunes.apple.com/search?term=${query}&media=music&entity=song&limit=1&country=${country}`;
-         const data = await Y.bridge.fetchJson(url);
+    // Looks up a direct Apple Music song URL (album/track) via the
+    // iTunes Search API, so the button opens the exact song.
+    async function resolveAppleMusicDirectLink(artist, title, country) {
+      try {
+        const query = encodeURIComponent(`${artist} ${title}`);
+        const url = `https://itunes.apple.com/search?term=${query}&media=music&entity=song&limit=1&country=${country}`;
+        const data = await Y.bridge.fetchJson(url);
 
-         const result = data?.results?.[0];
-         const trackViewUrl = result?.trackViewUrl;
+        const result = data?.results?.[0];
+        const trackViewUrl = result?.trackViewUrl;
 
-         if (trackViewUrl && Y.state.ui && Y.state.ui.amLink) {
-           // trackViewUrl looks like: https://music.apple.com/de/album/...?i=...
-           // Force it to open in the browser, not the app, by using the standard URL.
-           Y.state.ui.amLink.href = trackViewUrl;
-         }
-       } catch {
-         // Silently ignore — we already have the search fallback
-       }
-     }
+        if (trackViewUrl && Y.state.ui && Y.state.ui.amLink) {
+          Y.state.ui.amLink.href = trackViewUrl;
+        }
+      } catch {
+        // Silent: keep the search fallback.
+      }
+    }
 
+    // Spotify search by artist + title.
     function updateSpotifyLink() {
       if (!Y.state.ui || !Y.state.ui.spLink || !Y.state.currentSong) return;
       const { artist, title } = Y.state.currentSong;
@@ -887,6 +1100,8 @@
       updateExtSection();
     }
 
+    // Show/hide the group containers + separators based on which
+    // individual items are currently visible.
     function updateExtSection() {
       if (!Y.state.ui) return;
 
@@ -917,6 +1132,11 @@
       if (Y.state.ui.sep2) Y.state.ui.sep2.hidden = !(tabsVisible && actionsVisible);
     }
 
+    // ============================================================
+    //  ARTWORK
+    //  Loads the album cover via iTunes Search (see api.js).
+    //  Cached in memory + in chrome.storage.local.
+    // ============================================================
     async function updateArtwork(sequence) {
       if (!Y.state.ui || !Y.state.currentSong) return;
       const { artist, title } = Y.state.currentSong;
@@ -939,6 +1159,7 @@
         Y.state.artMemory.set(key, url || "");
       }
 
+      // Abort if a newer refresh superseded this one.
       if (sequence !== undefined && sequence !== Y.state.refreshSeq) return;
 
       if (url) {
@@ -949,6 +1170,10 @@
       }
     }
 
+    // ============================================================
+    //  OFFSET DISPLAY
+    //  Updates the timing pill's value and the "has-offset" state.
+    // ============================================================
     function updateOffsetDisplay() {
       if (!Y.state.ui) return;
       const offset = Y.state.lyricOffset;
@@ -963,8 +1188,10 @@
     }
 
     // ============================================================
-    //  Lyrics Rendering
+    //  LYRICS RENDERING
     // ============================================================
+
+    // Renders a "no lyrics found" empty state.
     function renderEmptyState(message) {
       if (!Y.state.ui) return;
 
@@ -981,6 +1208,7 @@
       Y.state.ui.lyrics.textContent = "";
       Y.state.ui.lyrics.scrollTop = 0;
 
+      // Clear sync state so we don't keep ticking on stale data.
       const sync = Y.sync.getSync();
       sync.lines = [];
       sync.elements = [];
@@ -1009,9 +1237,13 @@
       Y.state.ui.lyrics.appendChild(wrap);
     }
 
+    // Main lyrics renderer. Chooses between synced (karaoke) and
+    // plain (full lyrics) depending on the current mode and the
+    // availability of synced data.
     function renderLyrics(lyrics) {
       if (!Y.state.ui) return;
 
+      // Reset UI + sync state before rebuilding
       if (Y.state.ui.offsetRow) {
         Y.state.ui.offsetRow.hidden = true;
       }
@@ -1027,6 +1259,7 @@
 
       const wantSynced = Y.state.settings.mode !== "text" && lyrics.syncedLyrics;
 
+      // --- Synced / karaoke path ---
       if (wantSynced) {
         const lines = Y.lyrics.parseLRC(lyrics.syncedLyrics);
 
@@ -1041,6 +1274,7 @@
             div.textContent = line.text || "…";
             div.dataset.index = String(index);
 
+            // Click a line to seek to its timestamp.
             div.addEventListener("click", () => {
               Y.sync.seekTo(line.time);
             });
@@ -1051,16 +1285,12 @@
 
           Y.state.ui.lyrics.appendChild(container);
 
-          if (Y.state.ui.offsetRow) {
-            Y.state.ui.offsetRow.hidden = false;
-          }
-          if (Y.state.ui.groupTiming) {
-            Y.state.ui.groupTiming.hidden = false;
-          }
-          if (Y.state.ui.sep0) {
-            Y.state.ui.sep0.hidden = false;
-          }
+          // Show the timing controls.
+          if (Y.state.ui.offsetRow) Y.state.ui.offsetRow.hidden = false;
+          if (Y.state.ui.groupTiming) Y.state.ui.groupTiming.hidden = false;
+          if (Y.state.ui.sep0) Y.state.ui.sep0.hidden = false;
 
+          // Attach listeners after layout so offsets are correct.
           requestAnimationFrame(() => {
             Y.sync.attachVideoListeners();
             Y.sync.updateActiveLine();
@@ -1071,9 +1301,11 @@
         }
       }
 
+      // --- Plain text fallback ---
       let text = lyrics.plainLyrics?.trim();
 
       if (!text && lyrics.syncedLyrics) {
+        // Strip timestamps from synced lyrics and use as plain text.
         text = Y.lyrics
           .parseLRC(lyrics.syncedLyrics)
           .map((line) => line.text)
@@ -1092,21 +1324,20 @@
       pre.textContent = text;
       Y.state.ui.lyrics.appendChild(pre);
 
-      if (Y.state.ui.offsetRow) {
-        Y.state.ui.offsetRow.hidden = false;
-      }
-      if (Y.state.ui.groupTiming) {
-        Y.state.ui.groupTiming.hidden = true;
-      }
-      if (Y.state.ui.sep0) {
-        Y.state.ui.sep0.hidden = true;
-      }
+      // In plain mode, keep the actions bar visible (copy/print/links)
+      // but hide the timing pill (it wouldn't do anything).
+      if (Y.state.ui.offsetRow) Y.state.ui.offsetRow.hidden = false;
+      if (Y.state.ui.groupTiming) Y.state.ui.groupTiming.hidden = true;
+      if (Y.state.ui.sep0) Y.state.ui.sep0.hidden = true;
 
       updateExtSection();
     }
 
     // ============================================================
-    //  Print / Export
+    //  PRINT / EXPORT
+    //  Builds a standalone HTML document with the lyrics, opens it
+    //  in a new tab. The user can then use the browser's print
+    //  dialog (⌘P) to get a clean printout.
     // ============================================================
     function exportLyricsAsHTML() {
       const lyrics = Y.state.lastLyrics;
@@ -1117,6 +1348,7 @@
       const artist = song.artist || "";
       const artwork = Y.state.ui?.trackArt?.src || "";
 
+      // Get the plain text version (synced first, then plain).
       let lyricsText = "";
 
       if (lyrics.syncedLyrics) {
@@ -1132,6 +1364,7 @@
 
       lyricsText = (lyricsText || "").trim();
 
+      // Escape values for safe HTML interpolation.
       const safeTitle = escapeHtml(title);
       const safeArtist = escapeHtml(artist);
       const safeLyrics = escapeHtml(lyricsText).replace(/\n/g, "<br>");
@@ -1151,55 +1384,16 @@
       color: #111;
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
     }
-    .page {
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 48px 32px 64px;
-    }
+    .page { max-width: 720px; margin: 0 auto; padding: 48px 32px 64px; }
     header {
-      display: flex;
-      align-items: flex-start;
-      gap: 20px;
-      margin-bottom: 32px;
-      padding-bottom: 24px;
-      border-bottom: 2px solid #111;
+      display: flex; align-items: flex-start; gap: 20px;
+      margin-bottom: 32px; padding-bottom: 24px; border-bottom: 2px solid #111;
     }
-    .art {
-      width: 96px;
-      height: 96px;
-      border-radius: 8px;
-      object-fit: cover;
-      flex: 0 0 auto;
-      border: 1px solid #ddd;
-    }
-    h1 {
-      margin: 0 0 6px;
-      font-size: 24px;
-      line-height: 1.25;
-      font-weight: 700;
-      letter-spacing: -0.01em;
-    }
-    .artist {
-      margin: 0;
-      font-size: 15px;
-      color: #555;
-      font-weight: 500;
-    }
-    .lyrics {
-      font-size: 15px;
-      line-height: 1.9;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-      color: #111;
-    }
-    footer {
-      margin-top: 40px;
-      padding-top: 16px;
-      border-top: 1px solid #ddd;
-      font-size: 11.5px;
-      color: #777;
-      text-align: center;
-    }
+    .art { width: 96px; height: 96px; border-radius: 8px; object-fit: cover; flex: 0 0 auto; border: 1px solid #ddd; }
+    h1 { margin: 0 0 6px; font-size: 24px; line-height: 1.25; font-weight: 700; letter-spacing: -0.01em; }
+    .artist { margin: 0; font-size: 15px; color: #555; font-weight: 500; }
+    .lyrics { font-size: 15px; line-height: 1.9; white-space: pre-wrap; word-wrap: break-word; color: #111; }
+    footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 11.5px; color: #777; text-align: center; }
     @media print {
       .page { padding: 24px 16px; }
       header { margin-bottom: 24px; padding-bottom: 16px; }
@@ -1229,8 +1423,10 @@
       const blob = new Blob([html], { type: "text/html" });
       const url = URL.createObjectURL(blob);
 
+      // Preferred: open in a new tab.
       const win = window.open(url, "_blank");
 
+      // Fallback: download as HTML if the popup was blocked.
       if (!win) {
         const a = document.createElement("a");
         a.href = url;
@@ -1238,9 +1434,11 @@
         a.click();
       }
 
+      // Free the blob URL after 60 s (enough time for the tab to load).
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     }
 
+    // Escape HTML special characters before injecting into the export template.
     function escapeHtml(str) {
       return String(str || "")
         .replace(/&/g, "&amp;")
@@ -1251,7 +1449,8 @@
     }
 
     // ============================================================
-    //  Exports
+    //  EXPORTS
+    //  Public API used by other modules (content.js, popup.js, ...)
     // ============================================================
     Y.ui = {
       ensureUI,
