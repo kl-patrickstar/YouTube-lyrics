@@ -1,8 +1,12 @@
-# 🎵 YouTube Lyrics Extension
+# 🎵 YouTube Lyrics
 
 Sing along or play along. Synced karaoke lyrics for YouTube — plus one-click guitar tabs on Ultimate Guitar. No more searching, no more switching tabs. Just the video, the lyrics, and the tabs in one floating panel.
 
-[🍺 Support this project](#-support) · [🐛 Report an issue](https://github.com/kl-patrickstar/YouTube-lyrics/issues)
+![Browsers](https://img.shields.io/badge/browsers-Safari%20%7C%20Chrome-blue)
+![Manifest](https://img.shields.io/badge/manifest-v3-green)
+![License](https://img.shields.io/badge/license-MIT-lightgrey)
+
+[🍺 Support this project](#-support) · [🐛 Report an issue](https://github.com/kl-patrickstar/youtube-lyrics-extension/issues)
 
 ---
 
@@ -10,16 +14,16 @@ Sing along or play along. Synced karaoke lyrics for YouTube — plus one-click g
 
 **Built for karaoke and guitarists:**
 
-- 🎤 **Karaoke sync** — Frame-perfect line highlighting, tap any line to jump there
+- 🎤 **Sing Along** — Frame-perfect line highlighting, tap any line to jump there
 - 🎸 **Guitar tabs in one click** — Opens Ultimate Guitar for the current song, no searching
 
 **Plus:**
 
-- Text mode, adjustable timing, album art
-- Copy or print the full song with one click
-- Optional Spotify & Apple Music links
-- Dark/light theme, font size, reset
-- Shortcut: `⌘⇧L` / `Ctrl+Shift+L`
+- 📖 Text mode, adjustable timing
+- 📋 Copy or print the full song with one click
+- 🔵 Optional Spotify & Apple Music links (Apple Music opens the exact song)
+- ⚙️ Dark/light theme, font size, reset — all in a settings drawer
+- ⌨️ Shortcut: `⌘⇧L` / `Ctrl+Shift+L`
 
 ---
 
@@ -30,7 +34,6 @@ Sing along or play along. Synced karaoke lyrics for YouTube — plus one-click g
 | Safari (macOS) | ✅ Full | Xcode build |
 | Chrome | ✅ Full | Load unpacked |
 | Edge | ✅ Works | Like Chrome |
-| Firefox | ⚠️ Not tested | Manifest V2 required |
 
 ---
 
@@ -39,7 +42,8 @@ Sing along or play along. Synced karaoke lyrics for YouTube — plus one-click g
 ### Chrome
 
 ```bash
-git clone https://github.com/kl-patrickstar/YouTube-lyrics.git
+git clone https://github.com/kl-patrickstar/youtube-lyrics-extension.git
+cd youtube-lyrics-extension
 ```
 
 1. Open `chrome://extensions`
@@ -49,7 +53,7 @@ git clone https://github.com/kl-patrickstar/YouTube-lyrics.git
 
 ### Safari (macOS)
 
-Safari doesn't allow loading a folder directly. You have to generate an **Xcode project** and build it yourself.
+Safari doesn't allow loading a folder directly. You have to generate an Xcode project and build it yourself.
 
 #### Prerequisites
 
@@ -60,8 +64,8 @@ Safari doesn't allow loading a folder directly. You have to generate an **Xcode 
 #### 1. Clone the repository
 
 ```bash
-git clone https://github.com/kl-patrickstar/YouTube-lyrics.git
-cd YouTube-lyrics
+git clone https://github.com/kl-patrickstar/youtube-lyrics-extension.git
+cd youtube-lyrics-extension
 ```
 
 #### 2. Generate the Xcode project
@@ -121,7 +125,7 @@ In Xcode:
 ## 📂 Project Structure
 
 ```text
-YouTube-lyrics/
+youtube-lyrics-extension/
 ├── manifest.json        # Manifest V3
 ├── background.js        # Service worker (storage, fetch proxy, commands)
 ├── content.js           # Orchestrator (refresh, resolve, render)
@@ -160,12 +164,7 @@ All free, no API keys required:
 |-----|---------|
 | [LRCLIB](https://lrclib.net) | Synced lyrics (LRC format) |
 | [lyrics.ovh](https://lyrics.ovh) | Plain-text fallback |
-| [iTunes Search](https://itunes.apple.com) | Album artwork |
-
-
-![Browsers](https://img.shields.io/badge/browsers-Safari%20%7C%20Chrome-blue)
-![Manifest](https://img.shields.io/badge/manifest-v3-green)
-![License](https://img.shields.io/badge/license-MIT-lightgrey)
+| [iTunes Search](https://itunes.apple.com) | Album artwork + Apple Music links |
 
 ---
 
@@ -187,7 +186,7 @@ Issues and pull requests are welcome. Open an issue on GitHub for bugs or featur
 
 This extension is built and maintained in my free time. If it made your karaoke nights better or you just want to say thanks, feel free to show some love:
 
-[![PayPal](https://img.shields.io/badge/PayPal-Buy%20me%20a%20coffee-00457C?logo=paypal&logoColor=white)](https://www.paypal.me/SKleinhenzLeiva)
+[![PayPal](https://img.shields.io/badge/PayPal-Buy%20me%20a%20beer-00457C?logo=paypal&logoColor=white)](https://www.paypal.me/SKleinhenzLeiva)
 
 Thank you, I would appreciate it!
 
