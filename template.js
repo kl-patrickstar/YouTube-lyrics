@@ -6,7 +6,7 @@
       all: initial;
       font-family: Inter, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
 
-      --bg-primary: rgba(15, 18, 23, 0.88);
+      --bg-primary: rgba(10, 12, 16, 0.94); 
       --bg-secondary: rgba(255, 255, 255, 0.04);
       --bg-surface: rgba(255, 255, 255, 0.07);
       --bg-hover: rgba(255, 255, 255, 0.10);
@@ -31,7 +31,7 @@
       --tooltip-text: rgba(255, 255, 255, 0.94);
       --tooltip-border: rgba(255, 255, 255, 0.10);
 
-      --shadow-panel: 0 24px 64px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.3);
+      --shadow-panel: 0 32px 80px rgba(0, 0, 0, 0.65), 0 8px 24px rgba(0, 0, 0, 0.4);
       --shadow-overlay: 0 16px 40px rgba(0, 0, 0, 0.45), 0 4px 12px rgba(0, 0, 0, 0.3);
 
       --radius-sm: 8px;
@@ -42,7 +42,7 @@
       --transition-normal: 220ms cubic-bezier(0.2, 0.8, 0.4, 1);
 
       --popover-duration: 260ms;
-      --popover-easing: cubic-bezier(0.34, 1.26, 0.64, 1);
+      --popover-easing: cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
     * { box-sizing: border-box; }
@@ -113,14 +113,31 @@
       flex-direction: column;
       background: var(--bg-primary);
       -webkit-backdrop-filter: blur(16px) saturate(140%);
-      backdrop-filter: blur(16px) saturate(140%);
-      border: 1px solid var(--border-subtle);
+      backdrop-filter: blur(20px) saturate(160%);
+      border: 1px solid var(--border-strong);
       border-radius: var(--radius-lg);
       padding: 14px 14px 10px;
       color: var(--text-primary);
-      box-shadow: var(--shadow-panel);
+      box-shadow: var(--shadow-panel), 0 8px 24px rgba(110, 168, 255, 0.06);
       will-change: transform, opacity;
       transform-origin: 0 0;
+    }
+    
+    #panel::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 10%;
+      right: 10%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+      border-radius: 999px;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    #panel.theme-light::before {
+      background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.2), transparent);
     }
 
     #panel[hidden] {
@@ -141,7 +158,7 @@
       background: rgba(15, 18, 23, 0.96);
       will-change: transform;
       transition: none;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      box-shadow: var(--shadow-panel), 0 8px 32px rgba(110, 168, 255, 0.15);
     }
 
     #panel.theme-light.dragging {
@@ -470,8 +487,8 @@
       font-weight: 700;
       letter-spacing: 0.1em;
       text-transform: uppercase;
-      color: var(--text-muted);
-      opacity: 0.85;
+      color: var(--text-secondary);
+      opacity: 1;
       user-select: none;
     }
 
@@ -652,7 +669,7 @@
       font-family: inherit;
       font-size: var(--lyrics-font-size, 17px);
       line-height: 1.8;
-      color: var(--text-secondary);
+      color: var(--text-primary);
       -webkit-font-smoothing: antialiased;
     }
 
@@ -671,6 +688,18 @@
       transition: opacity 100ms ease, color 100ms ease,
                   background-color 100ms ease, border-color 100ms ease,
                   font-weight 100ms ease;
+      animation: ytly-line-in 220ms ease backwards;
+    }
+
+    @keyframes ytly-line-in {
+      from {
+        opacity: 0;
+        transform: translateY(4px);
+      }
+      to {
+        opacity: 0.42;
+        transform: translateY(0);
+      }
     }
 
     .line:hover { opacity: 0.75; color: var(--text-secondary); }
@@ -682,6 +711,7 @@
       font-weight: 700;
       background-color: var(--accent-soft);
       border-left-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(110, 168, 255, 0.15);
     }
 
     .controls-bar {
@@ -708,7 +738,7 @@
       letter-spacing: 0.05em;
       text-transform: uppercase;
       color: var(--text-muted);
-      opacity: 0.7;
+      opacity: 0.9;
       padding: 0 2px;
       user-select: none;
       line-height: 1;
@@ -1000,9 +1030,9 @@
       --bg-hover: rgba(0, 0, 0, 0.08);
       --bg-active: rgba(0, 0, 0, 0.12);
 
-      --text-primary: rgba(20, 22, 26, 0.96);
-      --text-secondary: rgba(20, 22, 26, 0.64);
-      --text-muted: rgba(20, 22, 26, 0.40);
+     --text-primary: rgba(10, 12, 16, 1);
+     --text-secondary: rgba(10, 12, 16, 0.82);
+     --text-muted: rgba(10, 12, 16, 0.60);    
 
       --border-subtle: rgba(0, 0, 0, 0.07);
       --border-strong: rgba(0, 0, 0, 0.12);
@@ -1016,7 +1046,7 @@
       --spotify: #15803d;
 
       --tooltip-bg: rgba(255, 255, 255, 0.98);
-      --tooltip-text: rgba(20, 22, 26, 0.96);
+      --tooltip-text: rgba(10, 12, 16, 1);
       --tooltip-border: rgba(0, 0, 0, 0.08);
 
       --shadow-panel: 0 24px 64px rgba(0, 0, 0, 0.18), 0 4px 16px rgba(0, 0, 0, 0.10);

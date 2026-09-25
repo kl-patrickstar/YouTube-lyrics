@@ -1,43 +1,114 @@
- (() => {
+// ============================================================
+//  lyrics.js
+//  Parses YouTube metadata into clean artist/title pairs,
+//  handles LRC timestamps, and generates title variants for
+//  lyrics lookups.
+//
+//  Exports (Y.lyrics):
+//    - cleanArtist()        – strips "- Topic", "VEVO" from names
+//    - cleanTrack()         – strips "(Official Video)", "[HD]" etc.
+//    - stripArtistPrefix()  – removes "Artist - " from a title
+//    - normalizeWhitespace()– converts fancy spaces to plain ones
+//    - buildTitleVariants() – generates alt titles for API search
+//    - parseSongInfo()      – main metadata parser (5 strategies)
+//    - parseLRC()           – parses LRC text to [{time, text}]
+//    - firstLyricItem()     – picks first usable entry from an API list
+// ============================================================
+
+(() => {
    const Y = (globalThis.YTLY ??= {});
 
    // ============================================================
-   //  KÜNSTLER-BEREINIGUNG
+   //  WHITESPACE NORMALIZATION
+   //  YouTube sometimes uses non-breaking spaces (\u00A0) and
+   //  other unicode whitespace. Normalize everything to plain
+   //  spaces so regex and comparisons behave predictably.
    // ============================================================
-   function cleanArtist(name) {
-     return (name || "")
-       .replace(/\s*-\s*Topic$/i, "")
-       .replace(/VEVO$/i, "")
+   function normalizeWhitespace(str) {
+     return String(str || "")
+       .replace(/[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g, " ")
        .replace(/\s{2,}/g, " ")
        .trim();
    }
 
    // ============================================================
-   //  TITEL-BEREINIGUNG
-   //  Entfernt typische YouTube-Zusätze wie "(Official Video)",
-   //  "[HD]", "(Lyric Video)", " - sped up" etc.
+   //  ARTIST CLEANUP
+   //  Removes suffixes like "- Topic" and "VEVO".
+   //  Example: "Avril Lavigne - Topic" → "Avril Lavigne"
+   // ============================================================
+   function cleanArtist(name) {
+     return normalizeWhitespace(name)
+       .replace(/\s*-\s*Topic$/i, "")
+       .replace(/VEVO$/i, "")
+       .trim();
+   }
+
+   // ============================================================
+   //  TITLE CLEANUP
+   //  Removes common YouTube noise:
+   //    - Bracketed tags: [HD], [4K]
+   //    - Parenthesised noise: (Official Video), (Lyric Video),
+   //      (Audio), (Visualizer), (Explicit), (Sped Up) etc.
+   //    - Trailing suffixes: "- sped up", "- slowed + reverb"
    // ============================================================
    const TITLE_NOISE_REGEX =
      /\([^)]*(official|video|lyric|lyrics|audio|visualizer|visualiser|hd|hq|4k|uhd|8k|live|performance|mv|music video|trailer|explicit|clean|remaster|remastered|lyric video|official audio|official video|official music video|color coded|color-coded|premiere|premier|with lyrics|full song|sped up|slowed|reverb)[^)]*\)/gi;
 
    function cleanTrack(name) {
-     return (name || "")
+     return normalizeWhitespace(name)
        .replace(/\[[^\]]*\]/g, " ")
        .replace(TITLE_NOISE_REGEX, " ")
        .replace(/\s*[-–—]\s*(sped\s*up|slowed(?:\s*\+?\s*reverb)?|reverb|nightcore)\s*$/i, "")
-       .replace(/\s{2,}/g, " ")
        .trim();
    }
 
    // ============================================================
-   //  TITEL-VARIANTEN
+   //  DASH / SEPARATOR CHARACTERS
+   //  Covers all dash-like characters used by YouTube titles:
+   //    -   normal hyphen              \u2010 non-breaking hyphen
+   //    –   en dash                    —   em dash
+   //    −   minus sign                 |   pipe
+   //    :   colon                      ·   middle dot
+   //    •   bullet
+   // ============================================================
+   const DASH_CHARS = "\\-\\u2010\\u2011\\u2012\\u2013\\u2014\\u2015\\u2212\\uFE58\\uFE63\\uFF0D|:·•";
+
+   // ============================================================
+   //  STRIP ARTIST PREFIX FROM TITLE
+   //  Removes "Artist - " prefix from a title if present.
+   //  Example: "Avril Lavigne - What The Hell" + "Avril Lavigne"
+   //    → "What The Hell"
+   //  Returns the original title if stripping would empty it.
+   // ============================================================
+   function stripArtistPrefix(title, artist) {
+     if (!title || !artist || artist === "Unknown") return title;
+
+     const t = normalizeWhitespace(title);
+     const a = normalizeWhitespace(artist);
+
+     const escaped = a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+     const regex = new RegExp(`^\\s*${escaped}\\s*[${DASH_CHARS}]\\s*`, "i");
+
+     const stripped = t.replace(regex, "").trim();
+     return stripped || title;
+   }
+
+   // ============================================================
+   //  TITLE VARIANTS
+   //  Generates alternative titles to try against lyrics APIs.
+   //  Example: "Song (Official Video) [HD]" might generate:
+   //    - "Song"
+   //    - "Song (Official Video) [HD]"
+   //    - "Song (Official Video)"
+   //    - "Song [HD]"
+   //  Used by api.js when the primary lookup fails.
    // ============================================================
    function buildTitleVariants(rawTitle, artistName) {
      const variants = [];
      const seen = new Set();
 
      const add = (title) => {
-       const t = (title || "").replace(/\s{2,}/g, " ").trim();
+       const t = normalizeWhitespace(title);
        if (t && !seen.has(t.toLowerCase())) {
          seen.add(t.toLowerCase());
          variants.push(t);
@@ -52,6 +123,7 @@
        "Sped Up", "Slowed", "Reverb", "Nightcore",
      ];
 
+     // Aggressive variant: strip noise words from start and end
      let aggressive = cleanTrack(rawTitle);
      for (const word of noiseWords) {
        const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -62,16 +134,19 @@
      }
      add(aggressive);
 
+     // Standard cleaned variant
      add(cleanTrack(rawTitle));
 
+     // Variant with artist name removed (if artist is known)
      if (artistName) {
        const escapedArtist = artistName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
        const withoutArtist = rawTitle
          .replace(new RegExp(escapedArtist, "gi"), "")
          .trim();
-       add(cleanTrack(withoutArtist).replace(/^[\s\-\–\—:|]+/, ""));
+       add(cleanTrack(withoutArtist).replace(/^[\s\-\–\—:|·•]+/, ""));
      }
 
+     // Original title without brackets/parentheses
      const original = rawTitle
        .replace(/\([^)]*\)/g, "")
        .replace(/\[[^\]]*\]/g, "")
@@ -82,48 +157,49 @@
    }
 
    // ============================================================
-   //  SONG-INFO PARSEN
-   //  Erkennt Künstler + Titel aus YouTube-Metadaten.
+   //  PARSE SONG INFO
+   //  Main metadata parser. Given a YouTube video title + channel
+   //  name, it returns { artist, title, source }.
    //
-   //  Strategie (in dieser Reihenfolge):
-   //   1. Topic-Kanal → Kanalname = Künstler, Video-Titel = Song
-   //   2. Video-Titel mit " - " → links = Künstler, rechts = Song
-   //   3. Video-Titel mit "ft."/"feat." UND Kanalname ist NICHT
-   //      generisch → Kanalname = Song, Künstler = vor "ft."
-   //   4. Theme-Kanal (Music/Vevo/Records) → Kanal = "Unknown"
-   //   5. Fallback → Kanalname = Künstler, Video-Titel = Song
+   //  Strategies (in order):
+   //    1. Topic channel ("Artist - Topic")
+   //       → channel = artist, video title = song
+   //    2. Video title with " - " / " – " / " | " / ": " separator
+   //       → left = artist, right = song
+   //    3. "ft." / "feat." / "featuring" in video title AND
+   //       channel name is NOT generic
+   //       → channel = song title, artist = part before "ft."
+   //    4. Theme channel ("Music", "Records", "Vevo", etc.)
+   //       → channel isn't an artist, artist = "Unknown"
+   //    5. Fallback
+   //       → channel = artist, video title = song
+   //
+   //  The `source` field tells which strategy matched (useful for
+   //  debugging and for deciding whether to auto-open the panel).
    // ============================================================
    function parseSongInfo(rawTitle, rawAuthor) {
-     const originalTitle = (rawTitle || "").trim();
-     const author = (rawAuthor || "").trim();
+     const originalTitle = normalizeWhitespace(rawTitle);
+     const author = normalizeWhitespace(rawAuthor);
 
      // --------------------------------------------------------
-     //  1. Topic-Kanal
+     //  Strategy 1: Topic channel
+     //  Example channel: "Avril Lavigne - Topic"
      // --------------------------------------------------------
-       if (/\s*-\s*Topic$/i.test(author)) {
-         const artist = cleanArtist(author);
-         let title = cleanTrack(originalTitle);
+     if (/\s*-\s*Topic$/i.test(author)) {
+       const artist = cleanArtist(author);
+       let title = cleanTrack(originalTitle);
+       title = stripArtistPrefix(title, artist);
 
-         // Normalize whitespace (YouTube uses non-breaking spaces)
-         title = title.replace(/[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g, " ");
-         title = title.replace(/\s{2,}/g, " ").trim();
-
-         // Strip "Artist - " prefix if present (all dash variants)
-         const escaped = artist.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-         const dashChars = "\\-\\u2010\\u2011\\u2012\\u2013\\u2014\\u2015\\u2212\\uFE58\\uFE63\\uFF0D|:·•";
-         const prefixRegex = new RegExp("^\\s*" + escaped + "\\s*[" + dashChars + "]\\s*", "i");
-         const stripped = title.replace(prefixRegex, "").trim();
-         if (stripped) title = stripped;
-
-         return {
-           artist,
-           title,
-           source: "topic",
-         };
-       }
+       return {
+         artist,
+         title,
+         source: "topic",
+       };
+     }
 
      // --------------------------------------------------------
-     //  2. Video-Titel mit Trenner
+     //  Strategy 2: Video title with a separator
+     //  Example: "Avril Lavigne - What The Hell"
      // --------------------------------------------------------
      const separators = [" - ", " – ", " — ", " | ", ": "];
 
@@ -145,8 +221,8 @@
      }
 
      // --------------------------------------------------------
-     //  3. "ft." / "feat." im Video-Titel UND Kanalname nicht generisch
-     //     → Kanalname = Song-Titel, Künstler = alles vor "ft."
+     //  Strategy 3: "ft." / "feat." in title AND non-generic channel
+     //  Example: "Song Title ft. Other Artist" on a personal channel
      // --------------------------------------------------------
      const ftMatch = originalTitle.match(
        /^(.+?)\s+(?:ft\.?|feat\.?|featuring)\s+/i
@@ -165,31 +241,47 @@
      }
 
      // --------------------------------------------------------
-     //  4. Theme-Kanal: Kanalname ist kein Künstler
+     //  Strategy 4: Theme channel — channel name is not an artist
+     //  Example: "TopPop", "MusicVideos", "Charts 2024"
      // --------------------------------------------------------
      if (isGenericChannel && !/\s*-\s*Topic$/i.test(author)) {
+       const title = cleanTrack(originalTitle);
        return {
          artist: "Unknown",
-         title: cleanTrack(originalTitle),
+         title,
          source: "theme-channel",
        };
      }
 
      // --------------------------------------------------------
-     //  5. Fallback
+     //  Strategy 5: Fallback — trust the channel name as artist
      // --------------------------------------------------------
+     const artist = cleanArtist(author) || "Unknown";
+     let title = cleanTrack(originalTitle) || "Unknown";
+
+     // Safety: strip artist prefix if it slipped through
+     title = stripArtistPrefix(title, artist);
+
      return {
-       artist: cleanArtist(author) || "Unknown",
-       title: cleanTrack(originalTitle) || "Unknown",
+       artist,
+       title,
        source: "fallback",
      };
    }
 
    // ============================================================
    //  LRC PARSER
-   //  Unterstützt:
-   //    [mm:ss.xx]  [mm:ss.xxx]  [mm:ss:xx]
-   //    [offset: +500]  → verschiebt alle Zeiten um 0.5 s
+   //  Converts LRC text into a sorted array of timed lines.
+   //
+   //  Supported timestamp formats:
+   //    [mm:ss.xx]     – centiseconds
+   //    [mm:ss.xxx]    – milliseconds
+   //    [mm:ss:xx]     – colon as decimal separator
+   //
+   //  Also handles the [offset:+500] metadata tag: it shifts all
+   //  timestamps by the given number of milliseconds.
+   //
+   //  Returns: [{ time: number, text: string }, ...] sorted by time
    // ============================================================
    function parseLRC(lrc) {
      const output = [];
@@ -197,6 +289,7 @@
      const lines = text.split(/\r?\n/);
      const timeTagRegex = /\[(\d{1,2}):(\d{1,2})(?:[.:](\d{1,3}))?\]/g;
 
+     // Read the global [offset: ...] tag if present
      let globalOffset = 0;
      const offsetMatch = text.match(/\[offset:\s*([+-]?\d+)\]/i);
      if (offsetMatch) {
@@ -216,6 +309,7 @@
          const seconds = Number(match[2]);
          const fractionRaw = match[3];
 
+         // Fraction can be 1, 2, or 3 digits — normalize to seconds
          let fraction = 0;
          if (fractionRaw) {
            fraction =
@@ -236,7 +330,12 @@
    }
 
    // ============================================================
-   //  ERSTES LYRIC-ITEM AUS LRCLIB-ANTWORT
+   //  FIRST LYRIC ITEM
+   //  LRCLIB responses can be:
+   //    - an object with { plainLyrics, syncedLyrics }
+   //    - an array of such objects
+   //    - an object with a nested .data array
+   //  This helper picks the first item that actually has lyrics.
    // ============================================================
    function firstLyricItem(data) {
      if (!data) return null;
@@ -263,11 +362,13 @@
    }
 
    // ============================================================
-   //  EXPORT
+   //  EXPORTS
    // ============================================================
    Y.lyrics = {
      cleanArtist,
      cleanTrack,
+     stripArtistPrefix,
+     normalizeWhitespace,
      buildTitleVariants,
      parseSongInfo,
      parseLRC,
