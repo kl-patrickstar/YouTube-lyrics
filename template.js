@@ -631,6 +631,9 @@
     .settings-reset svg { width: 13px; height: 13px; }
 
     #status {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
       margin: 0 2px 10px;
       padding: 9px 12px;
       border-radius: var(--radius-md);
@@ -641,9 +644,45 @@
       line-height: 1.5;
     }
 
+    #status-text {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .status-close {
+      flex: 0 0 auto;
+      width: 20px;
+      height: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      border-radius: 6px;
+      cursor: pointer;
+      padding: 0;
+      margin-top: 1px;
+      transition: background var(--transition-fast), color var(--transition-fast);
+    }
+
+    .status-close:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .status-close svg {
+      width: 12px;
+      height: 12px;
+    }
+
     #status.error {
       background: var(--danger-soft);
       border-color: transparent;
+      color: var(--danger);
+    }
+
+    #status.error .status-close {
       color: var(--danger);
     }
 
@@ -1192,7 +1231,10 @@
           </button>
         </div>
 
-        <div id="status" hidden role="status" aria-live="polite"></div>
+        <div id="status" hidden role="status" aria-live="polite">
+          <span id="status-text"></span>
+          <button id="status-close" class="status-close" type="button" aria-label="Dismiss">${ICONS.close}</button>
+        </div>
 
         <div id="lyrics"></div>
 

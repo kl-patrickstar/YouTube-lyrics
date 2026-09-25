@@ -62,6 +62,8 @@
         titleInput: root.getElementById("title-input"),
         search: root.getElementById("search"),
         status: root.getElementById("status"),
+        statusText: root.getElementById("status-text"),
+        statusClose: root.getElementById("status-close"),
         lyrics: root.getElementById("lyrics"),
         settingsBtn: root.getElementById("settings-btn"),
         settings: root.getElementById("settings"),
@@ -280,6 +282,12 @@
       }
 
       ui.search.addEventListener("click", () => Y.controller.manualSearch());
+      // Dismiss status on click
+      if (ui.statusClose) {
+          ui.statusClose.addEventListener("click", () => {
+            hideStatus();
+          });
+        }
 
       if (ui.settingAutoScroll) {
         ui.settingAutoScroll.addEventListener("click", async () => {
@@ -685,12 +693,17 @@
     // ============================================================
     //  Status & Loading
     // ============================================================
-    function setStatus(text, isError = false) {
-      if (!Y.state.ui) return;
-      Y.state.ui.status.hidden = false;
-      Y.state.ui.status.textContent = text;
-      Y.state.ui.status.classList.toggle("error", isError);
-    }
+     function setStatus(text, isError = false) {
+       if (!Y.state.ui) return;
+       Y.state.ui.status.hidden = false;
+       if (Y.state.ui.statusText) {
+         Y.state.ui.statusText.textContent = text;
+       } else {
+         // Fallback (falls statusText nicht gefunden wurde)
+         Y.state.ui.status.textContent = text;
+       }
+       Y.state.ui.status.classList.toggle("error", isError);
+     }
 
     function hideStatus() {
       if (!Y.state.ui) return;
