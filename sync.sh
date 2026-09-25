@@ -1,10 +1,11 @@
 #!/bin/bash
-# sync.sh — Kopiert Extension-Dateien aus Xcode in den flachen Ordner (für Chrome + GitHub)
+# sync.sh — Kopiert Extension-Dateien aus Xcode in den GitHub-Repo-Ordner
+#           (für Chrome + GitHub)
 
 set -e
 
-SRC="/Users/stefankl/YouTube Lyrics/Shared (Extension)"
-DST="$HOME/youtube-lyrics-extension"
+SRC="/Users/stefankl/Projectos_Programacion/WebExtensions/YouTube-Lyrics/Safari/Shared (Extension)"
+DST="/Users/stefankl/Projectos_Programacion/WebExtensions/YouTube-Lyrics/GitHub-Repo"
 
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
@@ -13,11 +14,13 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 echo ""
-echo -e "${BLUE}🔄 YouTube Lyrics — Sync Xcode → Flacher Ordner${NC}"
+echo -e "${BLUE}🔄 YouTube Lyrics — Sync Xcode → GitHub-Repo${NC}"
 echo ""
 
 if [ ! -d "$SRC" ] || [ ! -d "$DST" ]; then
   echo -e "${RED}❌ Ordner nicht gefunden${NC}"
+  echo -e "${RED}   SRC: $SRC${NC}"
+  echo -e "${RED}   DST: $DST${NC}"
   exit 1
 fi
 
@@ -40,6 +43,10 @@ sync_file() {
 for f in ui.js template.js sync.js youtube.js api.js lyrics.js bridge.js state.js; do
   sync_file "$SRC/content/$f" "$DST/$f"
 done
+
+# content.js: von Xcode content/ in die flache Struktur
+# (Xcode nutzt Safari/Shared (Extension)/content/content.js — Chrome/GitHub nutzt content.js im Root)
+sync_file "$SRC/content/content.js" "$DST/content.js"
 
 # Popup
 sync_file "$SRC/popup.js" "$DST/popup.js"
