@@ -1091,8 +1091,8 @@
               </button>
             </div>
             <div class="segmented header-segmented" role="radiogroup" aria-label="Lyrics mode">
-              <button id="header-mode-karaoke" class="seg-btn" role="radio" aria-checked="true" title="Karaoke mode">Karaoke</button>
-              <button id="header-mode-text" class="seg-btn" role="radio" aria-checked="false" title="Text mode">Text</button>
+            <button id="header-mode-karaoke" class="seg-btn" role="radio" aria-checked="true" title="Sing along mode">Sing Along</button>
+            <button id="header-mode-text" class="seg-btn" role="radio" aria-checked="false" title="Full lyrics mode">Full Lyrics</button>
             </div>
           </div>
         </header>
